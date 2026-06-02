@@ -20,6 +20,19 @@ async def graph_overview(request: Request):
     return {"nodes": counts, "edges": edge_counts}
 
 
+@router.get("/relationships")
+async def get_relationships(request: Request):
+    """Return all graph relationships as source_id, target_id, kind."""
+    engine = request.app.state.engine
+    records = await engine.neo4j.query("""
+        MATCH (a)-[r]->(b)
+        RETURN a.id AS source_id, b.id AS target_id,
+               type(r) AS kind, r.weight AS weight
+        LIMIT 500
+    """)
+    return {"relationships": records}
+
+
 @router.get("/search")
 async def search_graph(q: str, request: Request):
     """Full-text search across all node names (FR-9)."""

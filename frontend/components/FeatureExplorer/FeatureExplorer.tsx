@@ -71,14 +71,18 @@ export default function FeatureExplorer({ onFeatureSelect }: Props) {
       },
     }));
 
-    const flowEdges: Edge[] = relationships.map((r) => ({
-      id: `${r.source_id}-${r.target_id}`,
-      source: r.source_id,
-      target: r.target_id,
-      label: r.kind,
-      style: { stroke: "#4b5563" },
-      animated: r.kind === "depends_on",
-    }));
+    const flowEdges: Edge[] = relationships
+      .filter((r) => r.source_id && r.target_id)
+      .map((r) => ({
+        id: `${r.source_id}-${r.target_id}`,
+        source: r.source_id,
+        target: r.target_id,
+        label: r.kind?.toLowerCase().replace(/_/g, " "),
+        style: { stroke: "#6b7280", strokeWidth: 1.5 },
+        labelStyle: { fill: "#9ca3af", fontSize: 10 },
+        animated: r.kind?.toUpperCase() === "DEPENDS_ON",
+        markerEnd: { type: "arrowclosed" as any, color: "#6b7280" },
+      }));
 
     setNodes(flowNodes);
     setEdges(flowEdges);
