@@ -18,6 +18,9 @@ import { buildGroupedLayout, DOMAIN_COLORS } from "@/lib/groupLayout";
 import { buildArchitectureLayout } from "@/lib/architectureLayout";
 import { GroupNode } from "./GroupNode";
 import { FeatureDetailPanel } from "./FeatureDetailPanel";
+import { TourPanel } from "./TourPanel";
+
+const API = "http://localhost:8000";
 
 type ViewMode = "architecture" | "grouped" | "LR" | "TB";
 
@@ -40,6 +43,10 @@ export default function FeatureExplorer({ onFeatureSelect }: Props) {
   const [hoveredId, setHoveredId]     = useState<string | null>(null);
   const [viewMode, setViewMode]        = useState<ViewMode>("architecture");
   const [searchQuery, setSearchQuery]  = useState("");
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searchOpen, setSearchOpen]       = useState(false);
+  const [tourOpen, setTourOpen]           = useState(false);
+  const [tourFocusId, setTourFocusId]     = useState<string | null>(null);
 
   useEffect(() => {
     if (!features.length) return;
@@ -88,6 +95,20 @@ export default function FeatureExplorer({ onFeatureSelect }: Props) {
     setEdges(laidEdges);
   }, [features, relationships, viewMode]);
 
+  // ── BM25 search — debounced, populates dropdown ──────────────────────────
+  useEffect(() => {
+    if (!searchQuery.trim()) { setSearchResults([]); setSearchOpen(false); return; }
+    const t = setTimeout(async () => {
+      try {
+        const res = await fetch(`${API}/api/v1/search/semantic?q=${encodeURIComponent(searchQuery)}&limit=6`);
+        const data = await res.json();
+        setSearchResults(data.results ?? []);
+        setSearchOpen(true);
+      } catch { setSearchResults([]); }
+    }, 250);
+    return () => clearTimeout(t);
+  }, [searchQuery]);
+
   // ── Search — dim non-matching nodes ──────────────────────────────────────
   const q = searchQuery.trim().toLowerCase();
   const matchIds = useMemo(() => {
@@ -106,7 +127,25 @@ export default function FeatureExplorer({ onFeatureSelect }: Props) {
 
   const searchNodes = useMemo(() =>
     nodes.map((n) => {
-      if (!matchIds || n.type === "group") return n;
+      if (n.type === "group") return n;
+
+      // Tour mode: highlight current tour node
+      if (tourOpen && tourFocusId) {
+        const isTourNode = n.id === tourFocusId;
+        return {
+          ...n,
+          style: {
+            ...n.style,
+            opacity:   isTourNode ? 1 : 0.2,
+            outline:   isTourNode ? "2px solid #60a5fa" : undefined,
+            boxShadow: isTourNode ? "0 0 12px rgba(96,165,250,0.6)" : undefined,
+          },
+          zIndex: isTourNode ? 10 : 0,
+        };
+      }
+
+      // Search mode: highlight matches
+      if (!matchIds) return n;
       const isMatch = matchIds.has(n.id);
       return {
         ...n,
@@ -118,7 +157,7 @@ export default function FeatureExplorer({ onFeatureSelect }: Props) {
         zIndex: isMatch ? 5 : 0,
       };
     }),
-    [nodes, matchIds]
+    [nodes, matchIds, tourOpen, tourFocusId]
   );
 
   // ── Edge visibility — show only connections of hovered/selected node ─────
@@ -204,29 +243,68 @@ export default function FeatureExplorer({ onFeatureSelect }: Props) {
           <Background color="#111827" gap={28} />
           <Controls />
 
-          {/* Search */}
+          {/* Search + Tour toggle */}
           <Panel position="top-left">
-            <div className="flex items-center gap-2 bg-gray-900/90 border border-gray-700 rounded-lg px-3 py-1.5 shadow-lg">
-              <svg className="w-3.5 h-3.5 text-gray-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
-              </svg>
-              <input
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyDown={(e) => e.key === "Escape" && setSearchQuery("")}
-                placeholder="Search features…"
-                className="bg-transparent text-xs text-gray-200 placeholder-gray-600 outline-none w-44"
-              />
-              {searchQuery && (
-                <button onClick={() => setSearchQuery("")} className="text-gray-600 hover:text-gray-300 text-xs ml-1">
-                  ✕
-                </button>
-              )}
-              {matchIds && (
-                <span className="text-xs text-yellow-400 font-medium ml-1 flex-shrink-0">
-                  {matchIds.size} match{matchIds.size !== 1 ? "es" : ""}
-                </span>
-              )}
+            <div className="flex flex-col gap-1.5">
+              {/* Search box */}
+              <div className="relative">
+                <div className="flex items-center gap-2 bg-gray-900/95 border border-gray-700 rounded-lg px-3 py-1.5 shadow-lg">
+                  <svg className="w-3.5 h-3.5 text-gray-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
+                  </svg>
+                  <input
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Escape") { setSearchQuery(""); setSearchOpen(false); } }}
+                    onFocus={() => searchResults.length && setSearchOpen(true)}
+                    placeholder="Search features…"
+                    className="bg-transparent text-xs text-gray-200 placeholder-gray-600 outline-none w-44"
+                  />
+                  {searchQuery && (
+                    <button onClick={() => { setSearchQuery(""); setSearchOpen(false); }} className="text-gray-600 hover:text-gray-300 text-xs">✕</button>
+                  )}
+                </div>
+
+                {/* BM25 results dropdown */}
+                {searchOpen && searchResults.length > 0 && (
+                  <div className="absolute top-full left-0 mt-1 w-72 bg-gray-900 border border-gray-700 rounded-lg shadow-xl overflow-hidden z-50">
+                    {searchResults.map((r) => (
+                      <button
+                        key={r.id}
+                        onClick={() => {
+                          setSelectedId(r.id);
+                          onFeatureSelect(r.id);
+                          setSearchOpen(false);
+                        }}
+                        className="w-full flex items-center justify-between px-3 py-2 hover:bg-gray-800 transition-colors text-left"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-medium text-gray-200 truncate">{r.name}</p>
+                          <p className="text-xs text-gray-500 truncate">{r.domain}</p>
+                        </div>
+                        <span className="text-xs text-blue-400 ml-2 flex-shrink-0 font-mono">
+                          {r.score.toFixed(2)}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Tour button */}
+              <button
+                onClick={() => setTourOpen(!tourOpen)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors shadow-lg border ${
+                  tourOpen
+                    ? "bg-blue-600 border-blue-500 text-white"
+                    : "bg-gray-900/95 border-gray-700 text-gray-400 hover:text-gray-200"
+                }`}
+              >
+                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                </svg>
+                {tourOpen ? "Exit Tour" : "Guided Tour"}
+              </button>
             </div>
           </Panel>
 
@@ -269,12 +347,26 @@ export default function FeatureExplorer({ onFeatureSelect }: Props) {
         </ReactFlow>
       </div>
 
-      {selectedId && (
+      {selectedId && !tourOpen && (
         <FeatureDetailPanel
           featureId={selectedId}
           onClose={() => {
             setSelectedId(null);
             onFeatureSelect(null);
+          }}
+        />
+      )}
+
+      {tourOpen && (
+        <TourPanel
+          onNodeFocus={(id) => {
+            setTourFocusId(id);
+            setSelectedId(id);
+            onFeatureSelect(id);
+          }}
+          onClose={() => {
+            setTourOpen(false);
+            setTourFocusId(null);
           }}
         />
       )}

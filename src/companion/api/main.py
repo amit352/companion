@@ -6,7 +6,7 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from companion.api.routes import analysis, chat, chat_feedback, docs, features, feedback, graph, ingest, plugins, webhooks
+from companion.api.routes import analysis, chat, chat_feedback, docs, features, feedback, graph, ingest, plugins, search, tour, webhooks
 from companion.core.engine.core_engine import CoreEngine
 from companion.graph.neo4j_client import Neo4jClient
 
@@ -59,6 +59,8 @@ app.include_router(chat.router, prefix="/api/v1/chat", tags=["chat"])
 app.include_router(chat_feedback.router, prefix="/api/v1/chat", tags=["chat"])
 app.include_router(docs.router,     prefix="/api/v1/docs",     tags=["docs"])
 app.include_router(webhooks.router, prefix="/api/v1/webhooks", tags=["webhooks"])
+app.include_router(search.router,   prefix="/api/v1/search",   tags=["search"])
+app.include_router(tour.router,     prefix="/api/v1/tour",     tags=["tour"])
 
 
 @app.get("/health")
