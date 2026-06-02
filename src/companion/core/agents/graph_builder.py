@@ -3,9 +3,9 @@ from typing import Any
 
 import structlog
 
-from feature_graph.graph.models.nodes import Feature, Service
-from feature_graph.graph.models.relationships import feature_depends_on
-from feature_graph.graph.neo4j_client import Neo4jClient
+from companion.graph.models.nodes import Feature, Service
+from companion.graph.models.relationships import feature_depends_on
+from companion.graph.neo4j_client import Neo4jClient
 
 log = structlog.get_logger()
 

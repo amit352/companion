@@ -38,10 +38,10 @@ dev = [
 ]
 
 [project.scripts]
-fg = "feature_graph.cli:cli"
+fg = "companion.cli:cli"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/feature_graph"]
+packages = ["src/companion"]
 
 [tool.ruff]
 line-length = 100

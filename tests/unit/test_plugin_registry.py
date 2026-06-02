@@ -1,6 +1,6 @@
 import pytest
-from feature_graph.sdk.registry import PluginRegistry
-from feature_graph.sdk.base.plugin_base import PluginBase, PluginManifest, PluginType, PluginContext
+from companion.sdk.registry import PluginRegistry
+from companion.sdk.base.plugin_base import PluginBase, PluginManifest, PluginType, PluginContext
 from typing import Any
 
 

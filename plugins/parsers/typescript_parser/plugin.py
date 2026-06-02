@@ -5,10 +5,10 @@ Handles .ts, .tsx, .js, .jsx files.
 from tree_sitter import Language, Node, Parser
 import tree_sitter_typescript as tsts
 
-from feature_graph.sdk.base.parser_plugin import (
+from companion.sdk.base.parser_plugin import (
     ASTNode, Dependency, ParserOutput, ParserPlugin, Symbol,
 )
-from feature_graph.sdk.base.plugin_base import PluginManifest
+from companion.sdk.base.plugin_base import PluginManifest
 
 TS_LANGUAGE = Language(tsts.language_typescript())
 TSX_LANGUAGE = Language(tsts.language_tsx())

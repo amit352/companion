@@ -3,7 +3,7 @@ import json
 from pathlib import Path
 
 import pytest
-from feature_graph.sdk.base.plugin_base import PluginManifest, PluginType
+from companion.sdk.base.plugin_base import PluginManifest, PluginType
 
 
 def load_ts_plugin():

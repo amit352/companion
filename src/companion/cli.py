@@ -94,7 +94,7 @@ def serve():
     """Start the FeatureGraph API server."""
     import uvicorn
     uvicorn.run(
-        "feature_graph.api.main:app",
+        "companion.api.main:app",
         host="0.0.0.0",
         port=8000,
         reload=True,

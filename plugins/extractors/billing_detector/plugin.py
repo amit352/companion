@@ -8,8 +8,8 @@ sys.path.insert(0, str(Path(__file__).parents[2]))
 from _base import (
     build_system_prompt, call_claude, filter_deps, filter_symbols, parse_output,
 )
-from feature_graph.sdk.base.feature_plugin import FeatureExtractionOutput, FeaturePlugin
-from feature_graph.sdk.base.plugin_base import PluginManifest
+from companion.sdk.base.feature_plugin import FeatureExtractionOutput, FeaturePlugin
+from companion.sdk.base.plugin_base import PluginManifest
 
 _KEYWORDS = {
     "payment", "billing", "invoice", "subscription", "plan", "price", "pricing",

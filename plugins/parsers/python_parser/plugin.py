@@ -8,10 +8,10 @@ from typing import Any
 import tree_sitter_python as tspython
 from tree_sitter import Language, Node, Parser
 
-from feature_graph.sdk.base.parser_plugin import (
+from companion.sdk.base.parser_plugin import (
     ASTNode, Dependency, ParserOutput, ParserPlugin, Symbol,
 )
-from feature_graph.sdk.base.plugin_base import PluginContext, PluginManifest, PluginType
+from companion.sdk.base.plugin_base import PluginContext, PluginManifest, PluginType
 
 PY_LANGUAGE = Language(tspython.language())
 

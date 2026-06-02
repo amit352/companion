@@ -1,6 +1,6 @@
 import asyncio
 import pytest
-from feature_graph.core.engine.event_bus import EventBus, EventType
+from companion.core.engine.event_bus import EventBus, EventType
 
 
 @pytest.mark.asyncio

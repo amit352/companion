@@ -3,10 +3,10 @@ from typing import Any
 import structlog
 from neo4j import AsyncDriver, AsyncGraphDatabase
 
-from feature_graph.graph.models.nodes import (
+from companion.graph.models.nodes import (
     API, DatabaseTable, Feature, Requirement, Service, UIComponent,
 )
-from feature_graph.graph.models.relationships import GraphRelationship
+from companion.graph.models.relationships import GraphRelationship
 
 log = structlog.get_logger()
 

@@ -2,7 +2,7 @@ from collections import defaultdict
 
 import structlog
 
-from feature_graph.sdk.base.plugin_base import PluginBase, PluginType
+from companion.sdk.base.plugin_base import PluginBase, PluginType
 
 log = structlog.get_logger()
 

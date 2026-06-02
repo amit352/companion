@@ -13,8 +13,8 @@ from typing import Any
 
 import anthropic
 
-from feature_graph.sdk.base.compression_plugin import CompressedContext, CompressionPlugin
-from feature_graph.sdk.base.plugin_base import PluginManifest
+from companion.sdk.base.compression_plugin import CompressedContext, CompressionPlugin
+from companion.sdk.base.plugin_base import PluginManifest
 
 _COMPRESSION_SYSTEM = """You are an AI context compression specialist.
 Given a feature graph from a codebase, generate a maximally compressed but information-dense summary.
@@ -47,11 +47,11 @@ class Plugin(CompressionPlugin):
 
     async def compress(
         self,
-        feature_graph: dict[str, Any],
+        companion: dict[str, Any],
         query_context: str | None = None,
     ) -> CompressedContext:
-        features = feature_graph.get("features", [])
-        relationships = feature_graph.get("relationships", [])
+        features = companion.get("features", [])
+        relationships = companion.get("relationships", [])
 
         raw_json = json.dumps({"features": features, "relationships": relationships})
         raw_token_estimate = len(raw_json.split()) * 4 // 3  # rough estimate

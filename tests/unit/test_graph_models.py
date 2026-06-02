@@ -1,5 +1,5 @@
-from feature_graph.graph.models.nodes import Feature, Service, API, DatabaseTable, Requirement
-from feature_graph.graph.models.relationships import (
+from companion.graph.models.nodes import Feature, Service, API, DatabaseTable, Requirement
+from companion.graph.models.relationships import (
     feature_depends_on, feature_uses_service, service_reads_table,
 )
 

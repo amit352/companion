@@ -3,7 +3,7 @@ import tempfile
 from pathlib import Path
 
 import pytest
-from feature_graph.core.agents.project_scanner import ProjectScanner
+from companion.core.agents.project_scanner import ProjectScanner
 
 
 @pytest.fixture

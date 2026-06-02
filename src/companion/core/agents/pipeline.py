@@ -16,16 +16,16 @@ from typing import TYPE_CHECKING, Any
 
 import structlog
 
-from feature_graph.core.agents.project_scanner import ProjectScanner
-from feature_graph.core.agents.file_analyzer import FileAnalyzer
-from feature_graph.core.agents.feature_extractor import FeatureExtractorAgent
-from feature_graph.core.agents.architecture_analyzer import ArchitectureAnalyzer
-from feature_graph.core.agents.graph_builder import GraphBuilder
-from feature_graph.core.agents.ai_compressor import AICompressorAgent
-from feature_graph.core.engine.event_bus import EventType
+from companion.core.agents.project_scanner import ProjectScanner
+from companion.core.agents.file_analyzer import FileAnalyzer
+from companion.core.agents.feature_extractor import FeatureExtractorAgent
+from companion.core.agents.architecture_analyzer import ArchitectureAnalyzer
+from companion.core.agents.graph_builder import GraphBuilder
+from companion.core.agents.ai_compressor import AICompressorAgent
+from companion.core.engine.event_bus import EventType
 
 if TYPE_CHECKING:
-    from feature_graph.core.engine.core_engine import CoreEngine
+    from companion.core.engine.core_engine import CoreEngine
 
 log = structlog.get_logger()
 

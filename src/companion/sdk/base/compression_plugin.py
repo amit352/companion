@@ -27,7 +27,7 @@ class CompressionPlugin(PluginBase):
     @abstractmethod
     async def compress(
         self,
-        feature_graph: dict[str, Any],
+        companion: dict[str, Any],
         query_context: str | None = None,
     ) -> CompressedContext:
         """
@@ -37,7 +37,7 @@ class CompressionPlugin(PluginBase):
 
     async def execute(self, context: PluginContext, inputs: dict[str, Any]) -> dict[str, Any]:
         result = await self.compress(
-            feature_graph=inputs["feature_graph"],
+            companion=inputs["companion"],
             query_context=inputs.get("query_context"),
         )
         return result.model_dump()

@@ -1,4 +1,4 @@
-from feature_graph.core.deduplication import deduplicate, _token_overlap
+from companion.core.deduplication import deduplicate, _token_overlap
 
 
 def feat(name, domain="auth", confidence=0.8, files=None, tags=None):

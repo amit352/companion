@@ -1,6 +1,6 @@
 import asyncio
 import pytest
-from feature_graph.core.engine.job_scheduler import JobScheduler, JobStatus
+from companion.core.engine.job_scheduler import JobScheduler, JobStatus
 
 
 @pytest.mark.asyncio

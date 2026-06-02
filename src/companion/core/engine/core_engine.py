@@ -2,11 +2,11 @@ from pathlib import Path
 
 import structlog
 
-from feature_graph.core.engine.event_bus import EventBus, EventType
-from feature_graph.core.engine.job_scheduler import JobScheduler
-from feature_graph.core.engine.plugin_manager import PluginManager
-from feature_graph.graph.neo4j_client import Neo4jClient
-from feature_graph.sdk.registry import PluginRegistry
+from companion.core.engine.event_bus import EventBus, EventType
+from companion.core.engine.job_scheduler import JobScheduler
+from companion.core.engine.plugin_manager import PluginManager
+from companion.graph.neo4j_client import Neo4jClient
+from companion.sdk.registry import PluginRegistry
 
 log = structlog.get_logger()
 
@@ -47,7 +47,7 @@ class CoreEngine:
 
     async def analyze_repository(self, repo_path: Path, incremental: bool = False) -> str:
         """Trigger full or incremental repository analysis pipeline (FR-5)."""
-        from feature_graph.core.agents.pipeline import AnalysisPipeline
+        from companion.core.agents.pipeline import AnalysisPipeline
 
         await self.event_bus.publish(
             EventType.ANALYSIS_STARTED,

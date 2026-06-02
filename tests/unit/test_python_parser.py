@@ -3,7 +3,7 @@ import json
 from pathlib import Path
 
 import pytest
-from feature_graph.sdk.base.plugin_base import PluginManifest
+from companion.sdk.base.plugin_base import PluginManifest
 
 
 def load_python_plugin():

@@ -6,9 +6,9 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from feature_graph.api.routes import analysis, chat, features, feedback, graph, plugins
-from feature_graph.core.engine.core_engine import CoreEngine
-from feature_graph.graph.neo4j_client import Neo4jClient
+from companion.api.routes import analysis, chat, features, feedback, graph, plugins
+from companion.core.engine.core_engine import CoreEngine
+from companion.graph.neo4j_client import Neo4jClient
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 

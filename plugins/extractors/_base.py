@@ -11,7 +11,7 @@ from typing import Any
 
 import anthropic
 
-from feature_graph.sdk.base.feature_plugin import (
+from companion.sdk.base.feature_plugin import (
     FeatureExtractionOutput,
     FeatureNode,
     FeatureOwnership,

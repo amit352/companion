@@ -4,8 +4,8 @@ from typing import Any
 
 import structlog
 
-from feature_graph.sdk.base.plugin_base import PluginContext, PluginType
-from feature_graph.sdk.registry import PluginRegistry
+from companion.sdk.base.plugin_base import PluginContext, PluginType
+from companion.sdk.registry import PluginRegistry
 
 log = structlog.get_logger()
 
