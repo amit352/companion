@@ -39,12 +39,23 @@ const PALETTE = [
 
 // Only entries that genuinely can't be guessed from the first word
 const ENTITY_OVERRIDES: Array<[RegExp, string]> = [
-  [/oauth|user auth|entitle/i,                                         "Identity"],
-  [/supply chain|loan syndicat|program participant|liquidity pool/i,   "Program"],
-  [/daily fee|iso8601|subscription.based|async notif/i,               "Automation"],
-  [/invoice.to.asset|deposit reconcili/i,                             "Deposit"],
-  [/scheduled invoice|scheduled report/i,                             "Automation"],
-  [/prepare invoice|auto invoice/i,                                   "Invoice"],
+  // Identity / Auth
+  [/oauth|user auth|entitle|entitlement.gated/i,                          "Identity"],
+
+  // Program domain — lifecycle, config, rules, audit, calendar
+  [/supply chain|loan syndicat|program participant|liquidity pool|program completeness|program audit|bulk program|business calendar|advanced rate|program on.hold/i, "Program"],
+
+  // Invoice domain — processing, lifecycle, prep, reporting
+  [/prepare invoice|auto invoice|unsold invoice|invoice due|invoice reassign|balance program upload|invoice eligib/i, "Invoice"],
+
+  // Offer domain
+  [/offer credit reservation|offer business rule/i,                       "Offer"],
+
+  // Deposit domain — reconciliation belongs here
+  [/invoice.to.asset|deposit reconcili|^reconciliation$/i,                "Deposit"],
+
+  // Automation — scheduling, notifications, background workers, fee workers
+  [/daily fee|iso8601|iso 8601|subscription.based|async notif|notification builder|notification delivery|scheduled invoice|scheduled report|scheduled offer|fee calculat/i, "Automation"],
 ];
 
 function extractEntity(name: string): string {
@@ -113,8 +124,9 @@ function layoutEntityGroup(
 
   const actions = Object.entries(actionMap);
 
-  // If only 1 action or all in "General", skip sub-groups
-  const useSubGroups = actions.length > 1 && features.length > 3;
+  // Only show sub-groups when: 2+ distinct actions, each with 2+ features, and total > 4
+  const meaningfulActions = actions.filter(([, feats]) => feats.length >= 2);
+  const useSubGroups = meaningfulActions.length >= 2 && features.length > 4;
 
   let curY = HEADER + PAD;
   const allItems: Array<{ id: string; lx: number; ly: number; feature: any; subLabel?: string }> = [];
@@ -163,8 +175,25 @@ export function buildArchitectureLayout(
     (entityMap[entity] ??= []).push(f);
   }
 
+  // Step 1b — merge singleton groups into the largest group they relate to
+  // (single-feature groups produce useless tiny boxes)
+  const MIN_GROUP_SIZE = 2;
+  const mainGroups = Object.entries(entityMap).filter(([, f]) => f.length >= MIN_GROUP_SIZE);
+  const singletons = Object.entries(entityMap).filter(([, f]) => f.length < MIN_GROUP_SIZE);
+
+  for (const [, feats] of singletons) {
+    // Merge into largest existing group as a fallback
+    if (mainGroups.length > 0) {
+      const largest = mainGroups.reduce((a, b) => a[1].length >= b[1].length ? a : b);
+      largest[1].push(...feats);
+    } else {
+      // If no main groups yet, start one
+      mainGroups.push(["Other", feats]);
+    }
+  }
+
   // Step 2 — sort entity groups: larger groups first
-  const sorted = Object.entries(entityMap).sort((a, b) => b[1].length - a[1].length);
+  const sorted = mainGroups.sort((a, b) => b[1].length - a[1].length);
 
   // Step 3 — assign colors
   const colorOf: Record<string, (typeof PALETTE)[number]> = {};
