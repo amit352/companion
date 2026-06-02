@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { ArrowLeft, Code2, GitBranch, Shield, AlertTriangle, CornerDownRight } from "lucide-react";
+import { HierarchyPanel } from "@/components/HierarchyPanel";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 
@@ -92,7 +93,13 @@ export default function FeatureDetailPage() {
         </span>
       </div>
 
-      <div className="max-w-6xl mx-auto px-6 py-6 grid grid-cols-3 gap-6">
+      <div className="flex h-[calc(100vh-52px)]">
+      {/* Hierarchy panel — right side */}
+      <HierarchyPanel featureId={id} />
+
+      {/* Main content — scrollable */}
+      <div className="flex-1 overflow-y-auto">
+      <div className="max-w-5xl mx-auto px-6 py-6 grid grid-cols-3 gap-6">
 
         {/* LEFT: Feature overview + sub-graph */}
         <div className="col-span-1 space-y-4">
@@ -286,6 +293,8 @@ export default function FeatureDetailPage() {
             </div>
           ))}
         </div>
+      </div>
+      </div>
       </div>
     </div>
   );
