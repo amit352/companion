@@ -64,13 +64,22 @@ def filter_deps(
 
 def call_claude(system: str, payload: dict[str, Any], model: str = "claude-haiku-4-5-20251001") -> dict[str, Any]:
     client = anthropic.Anthropic()
-    response = client.messages.create(
-        model=model,
-        max_tokens=2048,
-        system=system,
-        messages=[{"role": "user", "content": json.dumps(payload)[:40_000]}],
-    )
-    return json.loads(response.content[0].text)
+    try:
+        response = client.messages.create(
+            model=model,
+            max_tokens=2048,
+            system=system,
+            messages=[{"role": "user", "content": json.dumps(payload)[:40_000]}],
+        )
+        return json.loads(response.content[0].text)
+    except anthropic.APIStatusError as e:
+        import structlog
+        structlog.get_logger().warning("claude_api_error", status=e.status_code, message=str(e.message))
+        return {"features": [], "relationships": [], "ownership": []}
+    except Exception as e:
+        import structlog
+        structlog.get_logger().warning("claude_call_failed", error=str(e))
+        return {"features": [], "relationships": [], "ownership": []}
 
 
 def parse_output(data: dict[str, Any]) -> FeatureExtractionOutput:

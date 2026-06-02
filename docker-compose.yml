@@ -6,19 +6,20 @@ services:
       - "7687:7687"
     environment:
       NEO4J_AUTH: neo4j/feature-graph-dev
-      NEO4J_PLUGINS: '["apoc", "graph-data-science"]'
+      NEO4J_server_memory_heap_initial__size: 256m
+      NEO4J_server_memory_heap_max__size: 512m
     volumes:
       - neo4j_data:/data
     healthcheck:
-      test: ["CMD", "cypher-shell", "-u", "neo4j", "-p", "feature-graph-dev", "RETURN 1"]
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:7474 || exit 1"]
       interval: 10s
       timeout: 5s
-      retries: 10
+      retries: 15
 
   postgres:
     image: pgvector/pgvector:pg16
     ports:
-      - "5432:5432"
+      - "5433:5432"
     environment:
       POSTGRES_USER: featuregraph
       POSTGRES_PASSWORD: featuregraph-dev
