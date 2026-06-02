@@ -1,6 +1,9 @@
 "use client";
 import { useEffect, useState } from "react";
-import { X, Copy, Check, ChevronRight } from "lucide-react";
+import { X, Copy, Check, ChevronRight, Code2, ChevronDown, ExternalLink } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
+import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 
 const API = "http://localhost:8000";
 
@@ -31,14 +34,33 @@ const NODE_TYPE_ICON: Record<string, string> = {
 };
 
 export function FeatureDetailPanel({ featureId, onClose, onNodeFocus }: Props) {
-  const [data, setData]       = useState<FullFeature | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [copied, setCopied]   = useState(false);
+  const router = useRouter();
+  const [data, setData]             = useState<FullFeature | null>(null);
+  const [loading, setLoading]       = useState(true);
+  const [copied, setCopied]         = useState(false);
   const [showLevel2, setShowLevel2] = useState(false);
+  const [codeFile, setCodeFile]     = useState<string | null>(null);
+  const [codeData, setCodeData]     = useState<{ content: string; language: string; total_lines: number } | null>(null);
+  const [codeLoading, setCodeLoading] = useState(false);
+
+  async function loadCode(path: string) {
+    if (codeFile === path) { setCodeFile(null); setCodeData(null); return; }
+    setCodeFile(path);
+    setCodeLoading(true);
+    try {
+      const res = await fetch(
+        `${API}/api/v1/code/file?path=${encodeURIComponent(path)}&feature_id=${featureId}`
+      );
+      if (res.ok) setCodeData(await res.json());
+    } catch { /* ignore */ }
+    setCodeLoading(false);
+  }
 
   useEffect(() => {
     setLoading(true);
     setShowLevel2(false);
+    setCodeFile(null);
+    setCodeData(null);
     fetch(`${API}/api/v1/features/${featureId}/full`)
       .then((r) => r.json())
       .then((d) => { setData(d); setLoading(false); })
@@ -59,9 +81,18 @@ export function FeatureDetailPanel({ featureId, onClose, onNodeFocus }: Props) {
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-800 flex-shrink-0">
         <h2 className="text-sm font-semibold text-gray-200">Feature Detail</h2>
-        <button onClick={onClose} className="text-gray-500 hover:text-gray-200 transition-colors">
-          <X size={16} />
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => router.push(`/feature/${featureId}`)}
+            className="p-1.5 text-gray-500 hover:text-blue-400 transition-colors"
+            title="Open full detail view"
+          >
+            <ExternalLink size={14} />
+          </button>
+          <button onClick={onClose} className="p-1.5 text-gray-500 hover:text-gray-200 transition-colors">
+            <X size={14} />
+          </button>
+        </div>
       </div>
 
       {loading && (
@@ -100,12 +131,57 @@ export function FeatureDetailPanel({ featureId, onClose, onNodeFocus }: Props) {
             </div>
           </section>
 
-          {/* Source files */}
+          {/* Source files — clickable to show code */}
           {f.source_files?.length > 0 && (
             <section>
               <p className="text-gray-600 uppercase tracking-wider mb-1">Source Files</p>
               {f.source_files.map((fp: string) => (
-                <p key={fp} className="text-gray-400 font-mono text-xs break-all">{fp}</p>
+                <div key={fp}>
+                  <button
+                    onClick={() => loadCode(fp)}
+                    className={`flex items-center gap-1.5 w-full text-left py-1 group transition-colors ${
+                      codeFile === fp ? "text-blue-400" : "text-gray-400 hover:text-gray-200"
+                    }`}
+                  >
+                    <Code2 size={11} className="flex-shrink-0" />
+                    <span className="font-mono text-xs break-all">{fp}</span>
+                    <ChevronDown
+                      size={11}
+                      className={`ml-auto flex-shrink-0 transition-transform ${codeFile === fp ? "rotate-180" : ""}`}
+                    />
+                  </button>
+
+                  {/* Inline code viewer */}
+                  {codeFile === fp && (
+                    <div className="mt-1 rounded-lg overflow-hidden border border-gray-800">
+                      {codeLoading ? (
+                        <div className="text-gray-600 text-xs p-3">Loading code…</div>
+                      ) : codeData ? (
+                        <>
+                          <div className="flex items-center justify-between px-3 py-1 bg-gray-900 border-b border-gray-800">
+                            <span className="text-xs text-gray-600">{codeData.language}</span>
+                            <span className="text-xs text-gray-700">{codeData.total_lines} lines</span>
+                          </div>
+                          <SyntaxHighlighter
+                            language={codeData.language}
+                            style={vscDarkPlus}
+                            customStyle={{
+                              margin: 0, padding: "12px", fontSize: "10px",
+                              lineHeight: "1.5", maxHeight: "400px",
+                              overflow: "auto", background: "#0d1117",
+                            }}
+                            showLineNumbers
+                            lineNumberStyle={{ color: "#3d4451", fontSize: "9px" }}
+                          >
+                            {codeData.content}
+                          </SyntaxHighlighter>
+                        </>
+                      ) : (
+                        <div className="text-red-400 text-xs p-3">Could not load file</div>
+                      )}
+                    </div>
+                  )}
+                </div>
               ))}
             </section>
           )}

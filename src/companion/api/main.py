@@ -10,8 +10,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from companion.api.auth import get_api_key
 from companion.api.telemetry import setup_telemetry
 from companion.api.routes import (
-    analysis, benchmark, chat, chat_feedback, context, docs, features, feedback,
-    graph, ingest, plugins, runtime, search, tour, webhooks,
+    analysis, analysis_detail, benchmark, chat, chat_feedback, code,
+    context, docs, features, feedback, graph, ingest, plugins,
+    runtime, search, tour, webhooks,
 )
 from companion.core.engine.core_engine import CoreEngine
 from companion.graph.neo4j_client import Neo4jClient
@@ -83,6 +84,8 @@ app.include_router(tour.router,          prefix="/api/v1/tour",      tags=["tour
 app.include_router(benchmark.router,     prefix="/api/v1/benchmark", tags=["benchmark"],      dependencies=[_auth])
 app.include_router(runtime.router,       prefix="/api/v1/runtime",   tags=["runtime"],        dependencies=[_auth])
 app.include_router(context.router,       prefix="/api/v1/context",   tags=["context"],        dependencies=[_auth])
+app.include_router(code.router,            prefix="/api/v1/code",      tags=["code"],           dependencies=[_auth])
+app.include_router(analysis_detail.router, prefix="/api/v1/analysis",  tags=["analysis"],       dependencies=[_auth])
 # Webhooks use their own HMAC signature — not protected by API key
 app.include_router(webhooks.router,      prefix="/api/v1/webhooks",  tags=["webhooks"])
 
