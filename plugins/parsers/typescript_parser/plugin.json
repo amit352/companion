@@ -1,0 +1,9 @@
+{
+  "name": "typescript-parser",
+  "version": "1.0.0",
+  "plugin_type": "parser",
+  "languages": ["typescript", "javascript"],
+  "entrypoint": "./plugin.py",
+  "description": "Tree-sitter TypeScript/JavaScript parser",
+  "permissions": ["read:source"]
+}

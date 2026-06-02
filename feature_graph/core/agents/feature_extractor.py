@@ -3,6 +3,7 @@ from typing import Any
 
 import structlog
 
+from feature_graph.core.deduplication import deduplicate
 from feature_graph.sdk.base.plugin_base import PluginContext, PluginType
 from feature_graph.sdk.registry import PluginRegistry
 
@@ -41,8 +42,14 @@ class FeatureExtractorAgent:
             merged_relationships.extend(result.get("relationships", []))
             merged_ownership.extend(result.get("ownership", []))
 
+        deduped = deduplicate(merged_features)
+        log.info(
+            "features_extracted",
+            raw=len(merged_features),
+            after_dedup=len(deduped),
+        )
         return {
-            "features": merged_features,
+            "features": deduped,
             "relationships": merged_relationships,
             "ownership": merged_ownership,
         }

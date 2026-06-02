@@ -1,4 +1,4 @@
-"""Authentication / authorization feature detector."""
+"""Billing / payments / subscriptions feature detector."""
 import sys
 from pathlib import Path
 from typing import Any
@@ -12,18 +12,16 @@ from feature_graph.sdk.base.feature_plugin import FeatureExtractionOutput, Featu
 from feature_graph.sdk.base.plugin_base import PluginManifest
 
 _KEYWORDS = {
-    "login", "logout", "authenticate", "authorize", "token", "session",
-    "password", "oauth", "jwt", "credential", "permission", "role",
-    "user", "account", "signup", "register", "mfa", "2fa", "sso",
-    "refresh", "access", "identity", "principal", "claim", "scope",
+    "payment", "billing", "invoice", "subscription", "plan", "price", "pricing",
+    "charge", "stripe", "paypal", "checkout", "cart", "order", "refund", "coupon",
+    "discount", "tier", "upgrade", "downgrade", "trial", "credit", "debit",
 }
 
 _SYSTEM = build_system_prompt(
-    domain="authentication and authorization",
+    domain="billing and payments",
     extra_instructions=(
-        "Focus on: login/logout flows, OAuth/OIDC integrations, session management, "
-        "JWT handling, role-based access control, MFA, and SSO. "
-        "Only include features backed by at least one matching symbol."
+        "Focus on: payment processing, subscription lifecycle, invoicing, "
+        "pricing tiers, refunds, and payment gateway integrations."
     ),
 )
 

@@ -1,0 +1,9 @@
+{
+  "name": "workflow-feature-detector",
+  "version": "1.0.0",
+  "plugin_type": "feature-extractor",
+  "languages": [],
+  "entrypoint": "./plugin.py",
+  "description": "Detects business workflow, process, and state machine features using Claude",
+  "permissions": ["read:symbols", "call:ai"]
+}

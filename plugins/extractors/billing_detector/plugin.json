@@ -1,0 +1,9 @@
+{
+  "name": "billing-feature-detector",
+  "version": "1.0.0",
+  "plugin_type": "feature-extractor",
+  "languages": [],
+  "entrypoint": "./plugin.py",
+  "description": "Detects billing, payment, subscription, and pricing features using Claude",
+  "permissions": ["read:symbols", "call:ai"]
+}

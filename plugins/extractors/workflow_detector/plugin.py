@@ -1,4 +1,4 @@
-"""Authentication / authorization feature detector."""
+"""Business workflow / process / state machine feature detector."""
 import sys
 from pathlib import Path
 from typing import Any
@@ -12,18 +12,18 @@ from feature_graph.sdk.base.feature_plugin import FeatureExtractionOutput, Featu
 from feature_graph.sdk.base.plugin_base import PluginManifest
 
 _KEYWORDS = {
-    "login", "logout", "authenticate", "authorize", "token", "session",
-    "password", "oauth", "jwt", "credential", "permission", "role",
-    "user", "account", "signup", "register", "mfa", "2fa", "sso",
-    "refresh", "access", "identity", "principal", "claim", "scope",
+    "workflow", "process", "pipeline", "step", "stage", "state", "transition",
+    "job", "task", "queue", "worker", "handler", "scheduler", "event",
+    "approval", "review", "publish", "draft", "submit", "complete", "cancel",
+    "trigger", "hook", "callback", "listener", "observer", "saga",
 }
 
 _SYSTEM = build_system_prompt(
-    domain="authentication and authorization",
+    domain="business workflows and processes",
     extra_instructions=(
-        "Focus on: login/logout flows, OAuth/OIDC integrations, session management, "
-        "JWT handling, role-based access control, MFA, and SSO. "
-        "Only include features backed by at least one matching symbol."
+        "Focus on: multi-step processes, state machines, job queues, approval flows, "
+        "event-driven pipelines, and background task orchestration. "
+        "Each feature should represent a distinct business process or workflow."
     ),
 )
 
