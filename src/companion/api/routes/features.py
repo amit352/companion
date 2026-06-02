@@ -12,19 +12,23 @@ async def list_features(
 ):
     engine = request.app.state.engine
     if repo_path:
-        cypher = """
-        MATCH (r:Repository {path: $repo})<-[:CONTAINS]-(f:Feature)
-        RETURN f LIMIT $limit
-        """
-        # Fallback: repo may not have CONTAINS edges yet — match by source_files prefix
-        records = await engine.neo4j.query(cypher, repo=repo_path, limit=limit)
+        # Primary: filter by repo_path property stamped at ingest time
+        records = await engine.neo4j.query(
+            "MATCH (f:Feature {repo_path: $path}) RETURN f LIMIT $limit",
+            path=repo_path, limit=limit,
+        )
+        # Fallback: match by source_files prefix (for features ingested before this field existed)
         if not records:
-            cypher = """
-            MATCH (f:Feature)
-            WHERE any(sf IN f.source_files WHERE sf STARTS WITH $prefix OR $prefix ENDS WITH '/')
-            RETURN f LIMIT $limit
-            """
-            records = await engine.neo4j.query(cypher, prefix=repo_path.rstrip("/"), limit=limit)
+            records = await engine.neo4j.query(
+                """
+                MATCH (f:Feature)
+                WHERE any(sf IN f.source_files
+                          WHERE sf CONTAINS $hint)
+                RETURN f LIMIT $limit
+                """,
+                hint=repo_path.rstrip("/").split("/")[-1],  # just the repo folder name
+                limit=limit,
+            )
     elif domain:
         records = await engine.neo4j.query(
             "MATCH (f:Feature {domain: $domain}) RETURN f LIMIT $limit",

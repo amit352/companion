@@ -28,6 +28,7 @@ class Feature(BaseModel):
     source_files: list[str] = []
     tags: list[str] = []
     ai_summary: str = ""
+    repo_path: str = ""   # stamped at ingest time for per-project filtering
 
     @property
     def neo4j_label(self) -> str:

@@ -153,6 +153,9 @@ async def ingest_features(req: IngestRequest, request: Request) -> IngestRespons
     # ── Features (with deduplication) ───────────────────
     raw_feats = [f.model_dump() for f in req.features]
     deduped   = deduplicate(raw_feats)
+    # Stamp repo_path on every feature so per-project filtering works
+    for feat in deduped:
+        feat["repo_path"] = req.repo_path
     builder   = GraphBuilder(neo4j=neo4j)
     feat_summary = await builder.build({"features": deduped, "relationships": []}, arch_result={})
     breakdown["Feature"] = feat_summary["nodes_created"]
