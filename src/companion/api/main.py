@@ -10,7 +10,7 @@ from companion.api.routes import analysis, chat, features, feedback, graph, plug
 from companion.core.engine.core_engine import CoreEngine
 from companion.graph.neo4j_client import Neo4jClient
 
-_REPO_ROOT = Path(__file__).resolve().parents[2]
+_REPO_ROOT = Path(__file__).resolve().parents[3]
 
 
 @contextlib.asynccontextmanager
@@ -26,7 +26,6 @@ async def lifespan(app: FastAPI):
             _REPO_ROOT / "plugins" / "parsers",
             _REPO_ROOT / "plugins" / "extractors",
             _REPO_ROOT / "plugins" / "compression",
-            _REPO_ROOT / "plugins",
         ],
     )
     await engine.start()

@@ -60,14 +60,23 @@ class Plugin(CompressionPlugin):
         if query_context:
             user_msg = f"Query focus: {query_context}\n\n{raw_json}"
 
-        response = self._client.messages.create(
-            model="claude-haiku-4-5-20251001",  # use Haiku — cheaper for compression
-            max_tokens=3000,
-            system=_COMPRESSION_SYSTEM,
-            messages=[{"role": "user", "content": user_msg[:50_000]}],  # hard token cap
-        )
+        try:
+            response = self._client.messages.create(
+                model="claude-haiku-4-5-20251001",
+                max_tokens=3000,
+                system=_COMPRESSION_SYSTEM,
+                messages=[{"role": "user", "content": user_msg[:50_000]}],
+            )
+            data = json.loads(response.content[0].text)
+        except anthropic.APIStatusError as e:
+            import structlog
+            structlog.get_logger().warning("compressor_api_error", status=e.status_code, message=str(e.message))
+            data = {}
+        except Exception as e:
+            import structlog
+            structlog.get_logger().warning("compressor_failed", error=str(e))
+            data = {}
 
-        data = json.loads(response.content[0].text)
         compressed_json = json.dumps(data)
         compressed_token_estimate = len(compressed_json.split()) * 4 // 3
         ratio = 1.0 - (compressed_token_estimate / max(raw_token_estimate, 1))
