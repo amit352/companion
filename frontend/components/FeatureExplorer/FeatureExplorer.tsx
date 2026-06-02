@@ -5,7 +5,6 @@ import {
   Background,
   Controls,
   Edge,
-  MiniMap,
   Node,
   useEdgesState,
   useNodesState,
@@ -108,11 +107,6 @@ export default function FeatureExplorer({ onFeatureSelect }: Props) {
         >
           <Background color="#1f2937" gap={24} />
           <Controls />
-          <MiniMap
-            nodeStrokeColor="#374151"
-            nodeColor={(n) => (n.style?.background as string) ?? "#6b7280"}
-            maskColor="rgba(0,0,0,0.4)"
-          />
         </ReactFlow>
       </div>
 
