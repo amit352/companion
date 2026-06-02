@@ -62,7 +62,7 @@ export function FeatureDetailPanel({ featureId, onClose }: Props) {
           <h4 className="text-xs text-gray-500 uppercase tracking-wider mb-1">
             Impact — {impact.dependents.length} dependent(s)
           </h4>
-          {impact.dependents.map((d: any) => (
+          {[...new Map(impact.dependents.map((d: any) => [d.id, d])).values()].map((d: any) => (
             <p key={d.id} className="text-xs text-orange-400 font-medium">{d.name}</p>
           ))}
         </section>

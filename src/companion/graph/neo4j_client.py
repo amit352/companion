@@ -119,6 +119,6 @@ class Neo4jClient:
         """What breaks if this feature changes? (FR-4, UI requirement §11.2)"""
         cypher = """
         MATCH (f:Feature {id: $id})<-[:DEPENDS_ON*1..5]-(dependent)
-        RETURN dependent.id as id, dependent.name as name, labels(dependent) as labels
+        RETURN DISTINCT dependent.id as id, dependent.name as name, labels(dependent) as labels
         """
         return await self.query(cypher, id=feature_id)
