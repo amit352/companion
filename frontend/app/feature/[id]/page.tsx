@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { ArrowLeft, Code2, GitBranch, Shield, AlertTriangle, CornerDownRight } from "lucide-react";
@@ -22,10 +22,12 @@ const RULE_COLORS: Record<string, string> = {
 export default function FeatureDetailPage() {
   const { id }   = useParams() as { id: string };
   const router   = useRouter();
-  const [full, setFull]     = useState<any>(null);
-  const [atoms, setAtoms]   = useState<any>(null);
-  const [code, setCode]     = useState<Record<string, any>>({});
-  const [openFile, setOpenFile] = useState<string | null>(null);
+  const [full, setFull]           = useState<any>(null);
+  const [atoms, setAtoms]         = useState<any>(null);
+  const [code, setCode]           = useState<Record<string, any>>({});
+  const [openFile, setOpenFile]   = useState<string | null>(null);
+  const [highlightLine, setHighlightLine] = useState<number | null>(null);
+  const codeRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -35,13 +37,22 @@ export default function FeatureDetailPage() {
     ]).then(([f, a]) => { setFull(f); setAtoms(a); });
   }, [id]);
 
-  async function loadFile(path: string) {
-    if (code[path]) { setOpenFile(openFile === path ? null : path); return; }
+  async function loadFile(path: string, jumpToLine?: number) {
+    if (!code[path]) {
+      const res = await fetch(`${API}/api/v1/code/file?path=${encodeURIComponent(path)}&feature_id=${id}`);
+      if (res.ok) {
+        const data = await res.json();
+        setCode((c) => ({ ...c, [path]: data }));
+      }
+    }
     setOpenFile(path);
-    const res = await fetch(`${API}/api/v1/code/file?path=${encodeURIComponent(path)}&feature_id=${id}`);
-    if (res.ok) {
-      const data = await res.json();
-      setCode((c) => ({ ...c, [path]: data }));
+    if (jumpToLine) {
+      setHighlightLine(jumpToLine);
+      // Scroll to highlighted line after render
+      setTimeout(() => {
+        const el = codeRef.current?.querySelector(`[data-line="${jumpToLine}"]`);
+        el?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 200);
     }
   }
 
@@ -159,16 +170,29 @@ export default function FeatureDetailPage() {
                 {atoms.business_rules.slice(0, 20).map((rule: any, i: number) => {
                   const Icon = RULE_ICONS[rule.rule_type] ?? Shield;
                   const color = RULE_COLORS[rule.rule_type] ?? "text-gray-400";
+                  const isHighlighted = openFile === rule.file && highlightLine === rule.line;
                   return (
-                    <div key={i} className="flex items-start gap-2 py-1">
+                    <button
+                      key={i}
+                      onClick={() => rule.file && loadFile(rule.file, rule.line)}
+                      className={`flex items-start gap-2 py-1.5 px-2 rounded w-full text-left transition-colors ${
+                        isHighlighted
+                          ? "bg-yellow-900/30 border border-yellow-700/50"
+                          : "hover:bg-gray-800"
+                      }`}
+                      title={rule.file ? `Jump to line ${rule.line} in ${rule.file}` : ""}
+                    >
                       <Icon size={12} className={`${color} mt-0.5 flex-shrink-0`} />
-                      <div className="min-w-0">
+                      <div className="min-w-0 flex-1">
                         <span className="text-xs text-gray-500 mr-2">{rule.function}</span>
                         <code className={`text-xs ${color} font-mono break-all`}>
                           {rule.description}
                         </code>
                       </div>
-                    </div>
+                      {rule.line > 0 && (
+                        <span className="text-xs text-gray-700 flex-shrink-0">L{rule.line}</span>
+                      )}
+                    </button>
                   );
                 })}
               </div>
@@ -191,19 +215,35 @@ export default function FeatureDetailPage() {
 
               {openFile === fp && (
                 code[fp] ? (
-                  <SyntaxHighlighter
-                    language={code[fp].language}
-                    style={vscDarkPlus}
-                    customStyle={{
-                      margin: 0, padding: "16px", fontSize: "12px",
-                      lineHeight: "1.6", maxHeight: "600px",
-                      overflow: "auto", background: "#0d1117",
-                    }}
-                    showLineNumbers
-                    lineNumberStyle={{ color: "#3d4451", fontSize: "10px" }}
-                  >
-                    {code[fp].content}
-                  </SyntaxHighlighter>
+                  <div ref={codeRef}>
+                    <SyntaxHighlighter
+                      language={code[fp].language}
+                      style={vscDarkPlus}
+                      customStyle={{
+                        margin: 0, padding: "16px", fontSize: "12px",
+                        lineHeight: "1.6", maxHeight: "600px",
+                        overflow: "auto", background: "#0d1117",
+                      }}
+                      showLineNumbers
+                      lineNumberStyle={{ color: "#3d4451", fontSize: "10px" }}
+                      wrapLines
+                      lineProps={(lineNumber) => {
+                        const isHL = highlightLine === lineNumber;
+                        return {
+                          "data-line": lineNumber,
+                          style: isHL ? {
+                            backgroundColor: "rgba(250, 204, 21, 0.12)",
+                            borderLeft: "3px solid #fbbf24",
+                            display: "block",
+                            marginLeft: "-16px",
+                            paddingLeft: "13px",
+                          } : { display: "block" },
+                        } as any;
+                      }}
+                    >
+                      {code[fp].content}
+                    </SyntaxHighlighter>
+                  </div>
                 ) : (
                   <div className="h-12 flex items-center justify-center text-gray-600 text-xs">
                     Loading code…

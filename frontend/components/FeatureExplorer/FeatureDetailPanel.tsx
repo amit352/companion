@@ -172,6 +172,7 @@ export function FeatureDetailPanel({ featureId, onClose, onNodeFocus }: Props) {
                             }}
                             showLineNumbers
                             lineNumberStyle={{ color: "#3d4451", fontSize: "9px" }}
+                            wrapLines
                           >
                             {codeData.content}
                           </SyntaxHighlighter>
