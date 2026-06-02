@@ -15,10 +15,11 @@ import "@xyflow/react/dist/style.css";
 import { useFeatureGraph } from "@/lib/hooks/useFeatureGraph";
 import { applyDagreLayout } from "@/lib/layout";
 import { buildGroupedLayout, DOMAIN_COLORS } from "@/lib/groupLayout";
+import { buildArchitectureLayout } from "@/lib/architectureLayout";
 import { GroupNode } from "./GroupNode";
 import { FeatureDetailPanel } from "./FeatureDetailPanel";
 
-type ViewMode = "grouped" | "LR" | "TB";
+type ViewMode = "architecture" | "grouped" | "LR" | "TB";
 
 const NODE_COLORS: Record<string, string> = {
   auth: "#7c3aed", billing: "#059669", workflow: "#d97706",
@@ -37,10 +38,17 @@ export default function FeatureExplorer({ onFeatureSelect }: Props) {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<ViewMode>("grouped");
+  const [viewMode, setViewMode] = useState<ViewMode>("architecture");
 
   useEffect(() => {
     if (!features.length) return;
+
+    if (viewMode === "architecture") {
+      const { nodes: n, edges: e } = buildArchitectureLayout(features, relationships);
+      setNodes(n);
+      setEdges(e);
+      return;
+    }
 
     if (viewMode === "grouped") {
       const { nodes: n, edges: e } = buildGroupedLayout(features, relationships);
@@ -113,9 +121,10 @@ export default function FeatureExplorer({ onFeatureSelect }: Props) {
   }
 
   const modes: { id: ViewMode; label: string }[] = [
-    { id: "grouped", label: "Grouped" },
-    { id: "LR",      label: "L → R" },
-    { id: "TB",      label: "T → B" },
+    { id: "architecture", label: "Architecture" },
+    { id: "grouped",      label: "Grouped" },
+    { id: "LR",           label: "L → R" },
+    { id: "TB",           label: "T → B" },
   ];
 
   // Legend
