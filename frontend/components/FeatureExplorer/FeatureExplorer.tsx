@@ -39,6 +39,7 @@ export default function FeatureExplorer({ onFeatureSelect }: Props) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [hoveredId, setHoveredId]     = useState<string | null>(null);
   const [viewMode, setViewMode]        = useState<ViewMode>("architecture");
+  const [searchQuery, setSearchQuery]  = useState("");
 
   useEffect(() => {
     if (!features.length) return;
@@ -86,6 +87,39 @@ export default function FeatureExplorer({ onFeatureSelect }: Props) {
     setNodes(laid);
     setEdges(laidEdges);
   }, [features, relationships, viewMode]);
+
+  // ── Search — dim non-matching nodes ──────────────────────────────────────
+  const q = searchQuery.trim().toLowerCase();
+  const matchIds = useMemo(() => {
+    if (!q) return null;
+    return new Set(
+      features
+        .filter((f: any) =>
+          f.name?.toLowerCase().includes(q) ||
+          f.description?.toLowerCase().includes(q) ||
+          f.tags?.some((t: string) => t.toLowerCase().includes(q)) ||
+          f.domain?.toLowerCase().includes(q)
+        )
+        .map((f: any) => f.id)
+    );
+  }, [q, features]);
+
+  const searchNodes = useMemo(() =>
+    nodes.map((n) => {
+      if (!matchIds || n.type === "group") return n;
+      const isMatch = matchIds.has(n.id);
+      return {
+        ...n,
+        style: {
+          ...n.style,
+          opacity: isMatch ? 1 : 0.15,
+          outline: isMatch ? "2px solid #fbbf24" : undefined,
+        },
+        zIndex: isMatch ? 5 : 0,
+      };
+    }),
+    [nodes, matchIds]
+  );
 
   // ── Edge visibility — show only connections of hovered/selected node ─────
   const focusId = hoveredId ?? selectedId;
@@ -155,7 +189,7 @@ export default function FeatureExplorer({ onFeatureSelect }: Props) {
     <div className="flex h-full">
       <div className="flex-1 relative">
         <ReactFlow
-          nodes={nodes}
+          nodes={searchNodes}
           edges={visibleEdges}
           nodeTypes={NODE_TYPES}
           onNodesChange={onNodesChange}
@@ -169,6 +203,32 @@ export default function FeatureExplorer({ onFeatureSelect }: Props) {
         >
           <Background color="#111827" gap={28} />
           <Controls />
+
+          {/* Search */}
+          <Panel position="top-left">
+            <div className="flex items-center gap-2 bg-gray-900/90 border border-gray-700 rounded-lg px-3 py-1.5 shadow-lg">
+              <svg className="w-3.5 h-3.5 text-gray-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
+              </svg>
+              <input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => e.key === "Escape" && setSearchQuery("")}
+                placeholder="Search features…"
+                className="bg-transparent text-xs text-gray-200 placeholder-gray-600 outline-none w-44"
+              />
+              {searchQuery && (
+                <button onClick={() => setSearchQuery("")} className="text-gray-600 hover:text-gray-300 text-xs ml-1">
+                  ✕
+                </button>
+              )}
+              {matchIds && (
+                <span className="text-xs text-yellow-400 font-medium ml-1 flex-shrink-0">
+                  {matchIds.size} match{matchIds.size !== 1 ? "es" : ""}
+                </span>
+              )}
+            </div>
+          </Panel>
 
           {/* View mode toggle */}
           <Panel position="top-right">

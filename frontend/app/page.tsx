@@ -3,6 +3,7 @@ import { useState } from "react";
 import dynamic from "next/dynamic";
 import AIChatInterface from "@/components/AIChatInterface/AIChatInterface";
 import { AnalysisLauncher } from "@/components/AnalysisLauncher";
+import { FileText } from "lucide-react";
 
 // @xyflow/react uses browser-only APIs (ResizeObserver, DOM transforms).
 // Rendering it server-side corrupts the store and triggers false key warnings.
@@ -12,6 +13,20 @@ const FeatureExplorer = dynamic(
 );
 
 type View = "explorer" | "chat";
+
+async function downloadDoc(type: "srs" | "readme" | "adr") {
+  const res = await fetch("http://localhost:8000/api/v1/docs/generate", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ doc_type: type, repo_name: "SCiCustomer" }),
+  });
+  const text = await res.text();
+  const blob = new Blob([text], { type: "text/markdown" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = `${type}.md`; a.click();
+  URL.revokeObjectURL(url);
+}
 
 export default function Home() {
   const [view, setView] = useState<View>("explorer");
@@ -42,8 +57,21 @@ export default function Home() {
           ))}
         </nav>
 
-        <div className="mt-auto">
-          <AnalysisLauncher />
+        <div className="mt-auto flex flex-col gap-2">
+          <p className="text-xs text-gray-600 uppercase tracking-wider">Generate Docs</p>
+          {(["srs", "readme", "adr"] as const).map((t) => (
+            <button
+              key={t}
+              onClick={() => downloadDoc(t)}
+              className="flex items-center gap-2 px-3 py-1.5 text-xs text-gray-400 hover:text-gray-200 hover:bg-gray-800 rounded transition-colors"
+            >
+              <FileText size={13} />
+              {t.toUpperCase()}
+            </button>
+          ))}
+          <div className="border-t border-gray-800 pt-2">
+            <AnalysisLauncher />
+          </div>
         </div>
       </aside>
 
