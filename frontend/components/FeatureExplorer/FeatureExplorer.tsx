@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import ReactFlow, {
+import {
+  ReactFlow,
   Background,
   Controls,
   Edge,
@@ -8,8 +9,8 @@ import ReactFlow, {
   Node,
   useEdgesState,
   useNodesState,
-} from "reactflow";
-import "reactflow/dist/style.css";
+} from "@xyflow/react";
+import "@xyflow/react/dist/style.css";
 import { useFeatureGraph } from "@/lib/hooks/useFeatureGraph";
 import { FeatureDetailPanel } from "./FeatureDetailPanel";
 
