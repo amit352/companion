@@ -1,10 +1,10 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import AIChatInterface from "@/components/AIChatInterface/AIChatInterface";
 import { QuickStart } from "@/components/QuickStart";
 import { DocViewer } from "@/components/DocViewer";
-import { FileText, Loader2 } from "lucide-react";
+import { FileText, Loader2, History } from "lucide-react";
 
 const FeatureExplorer = dynamic(
   () => import("@/components/FeatureExplorer/FeatureExplorer"),
@@ -26,6 +26,15 @@ export default function Home() {
   const [docContent, setDocContent]       = useState<string | null>(null);
   const [docType, setDocType]             = useState<DocType | null>(null);
   const [docLoading, setDocLoading]       = useState<DocType | null>(null);
+  const [runs, setRuns]                   = useState<any[]>([]);
+
+  // Load run history once
+  useEffect(() => {
+    fetch("http://localhost:8000/api/v1/analysis/runs")
+      .then((r) => r.json())
+      .then((d) => setRuns(d.runs ?? []))
+      .catch(() => {});
+  }, []);
 
   async function openDoc(type: DocType) {
     setDocLoading(type);
@@ -74,6 +83,27 @@ export default function Home() {
             </button>
           ))}
         </nav>
+
+        {/* Run history */}
+        {runs.length > 0 && (
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-1.5 text-xs text-gray-600 uppercase tracking-wider">
+              <History size={11} />
+              Recent Analyses
+            </div>
+            {runs.slice(0, 5).map((r) => (
+              <div key={r.id} className="px-2 py-1.5 rounded bg-gray-900 border border-gray-800">
+                <p className="text-xs text-gray-300 font-medium truncate">{r.repo_name || "Unknown"}</p>
+                <div className="flex items-center justify-between mt-0.5">
+                  <span className="text-xs text-gray-600">{r.features_out} features</span>
+                  <span className="text-xs text-gray-700">
+                    {r.completed_at ? new Date(r.completed_at).toLocaleDateString() : ""}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
 
         <div className="mt-auto flex flex-col gap-2">
           <p className="text-xs text-gray-600 uppercase tracking-wider">Generate Docs</p>
