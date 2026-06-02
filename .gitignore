@@ -24,8 +24,9 @@ out/
 .env.local
 .env.*.local
 
-# FeatureGraph state
+# FeatureGraph generated scan state (belongs to scanned repos, not this project)
 .feature-graph/
+**/.feature-graph/
 
 # IDE
 .vscode/

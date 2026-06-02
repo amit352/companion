@@ -26,7 +26,6 @@ const NODE_COLORS: Record<string, string> = {
   data: "#2563eb", infra: "#475569", unknown: "#374151",
 };
 
-// Stable reference — must be outside component
 const NODE_TYPES: NodeTypes = { group: GroupNode as any };
 
 interface Props {
@@ -38,7 +37,8 @@ export default function FeatureExplorer({ onFeatureSelect }: Props) {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<ViewMode>("architecture");
+  const [hoveredId, setHoveredId]     = useState<string | null>(null);
+  const [viewMode, setViewMode]        = useState<ViewMode>("architecture");
 
   useEffect(() => {
     if (!features.length) return;
@@ -49,7 +49,6 @@ export default function FeatureExplorer({ onFeatureSelect }: Props) {
       setEdges(e);
       return;
     }
-
     if (viewMode === "grouped") {
       const { nodes: n, edges: e } = buildGroupedLayout(features, relationships);
       setNodes(n);
@@ -57,7 +56,6 @@ export default function FeatureExplorer({ onFeatureSelect }: Props) {
       return;
     }
 
-    // Flat dagre layout
     const rawNodes: Node[] = features.map((f) => ({
       id: f.id,
       data: { label: f.name, feature: f },
@@ -81,25 +79,48 @@ export default function FeatureExplorer({ onFeatureSelect }: Props) {
         source: r.source_id,
         target: r.target_id,
         style: { stroke: "#4b5563", strokeWidth: 1.5 },
-        animated: r.kind?.toUpperCase() === "DEPENDS_ON",
         markerEnd: { type: "arrowclosed" as any, color: "#6b7280" },
       }));
 
-    const { nodes: laid, edges: laidEdges } = applyDagreLayout(
-      rawNodes, rawEdges, viewMode as "LR" | "TB"
-    );
+    const { nodes: laid, edges: laidEdges } = applyDagreLayout(rawNodes, rawEdges, viewMode as "LR" | "TB");
     setNodes(laid);
     setEdges(laidEdges);
   }, [features, relationships, viewMode]);
 
-  const handleNodeClick = useCallback(
-    (_: unknown, node: Node) => {
-      if (node.type === "group") return; // ignore group container clicks
-      setSelectedId(node.id);
-      onFeatureSelect(node.id);
-    },
-    [onFeatureSelect]
+  // ── Edge visibility — show only connections of hovered/selected node ─────
+  const focusId = hoveredId ?? selectedId;
+  const visibleEdges = useMemo(() =>
+    edges.map((e) => {
+      const connected = !focusId || e.source === focusId || e.target === focusId;
+      return {
+        ...e,
+        hidden: !connected && !!focusId,
+        style: {
+          ...e.style,
+          stroke:       connected ? "#60a5fa" : "#374151",
+          strokeWidth:  connected && focusId ? 2 : 1.5,
+          opacity:      focusId ? (connected ? 1 : 0) : 0,
+        },
+        animated:   connected && !!focusId,
+        markerEnd:  { type: "arrowclosed" as any, color: connected ? "#60a5fa" : "#4b5563" },
+        zIndex:     connected ? 10 : 0,
+      };
+    }),
+    [edges, focusId]
   );
+
+  const handleNodeClick = useCallback((_: unknown, node: Node) => {
+    if (node.type === "group") return;
+    const newId = node.id === selectedId ? null : node.id;
+    setSelectedId(newId);
+    onFeatureSelect(newId);
+  }, [onFeatureSelect, selectedId]);
+
+  const handleNodeMouseEnter = useCallback((_: unknown, node: Node) => {
+    if (node.type !== "group") setHoveredId(node.id);
+  }, []);
+
+  const handleNodeMouseLeave = useCallback(() => setHoveredId(null), []);
 
   if (isLoading) {
     return (
@@ -135,11 +156,14 @@ export default function FeatureExplorer({ onFeatureSelect }: Props) {
       <div className="flex-1 relative">
         <ReactFlow
           nodes={nodes}
-          edges={edges}
+          edges={visibleEdges}
           nodeTypes={NODE_TYPES}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onNodeClick={handleNodeClick}
+          onNodeMouseEnter={handleNodeMouseEnter}
+          onNodeMouseLeave={handleNodeMouseLeave}
+          onPaneClick={() => { setSelectedId(null); onFeatureSelect(null); }}
           fitView
           fitViewOptions={{ padding: 0.12 }}
         >
