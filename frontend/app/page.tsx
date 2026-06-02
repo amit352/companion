@@ -5,31 +5,69 @@ import AIChatInterface from "@/components/AIChatInterface/AIChatInterface";
 import { QuickStart } from "@/components/QuickStart";
 import { DocViewer } from "@/components/DocViewer";
 import { ProjectSwitcher } from "@/components/ProjectSwitcher";
-import { FileText, Loader2, History } from "lucide-react";
+import {
+  FileText,
+  Loader2,
+  History,
+  GitBranch,
+  MessageSquare,
+  ChevronDown,
+  ChevronRight,
+} from "lucide-react";
 
 const FeatureExplorer = dynamic(
   () => import("@/components/FeatureExplorer/FeatureExplorer"),
-  { ssr: false, loading: () => <div className="flex items-center justify-center h-full text-gray-500 text-sm">Loading graph...</div> }
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex flex-col items-center justify-center h-full gap-3">
+        <div
+          className="w-8 h-8 rounded-full border-2 animate-spin"
+          style={{
+            borderColor: "var(--border-default)",
+            borderTopColor: "var(--accent-blue)",
+          }}
+        />
+        <span style={{ color: "var(--text-tertiary)", fontSize: "var(--text-xs)" }}>
+          Loading graph…
+        </span>
+      </div>
+    ),
+  }
 );
 
 type View = "explorer" | "chat";
 type DocType = "srs" | "readme" | "adr";
 
 const DOC_LABELS: Record<DocType, string> = {
-  srs:    "Software Requirements Spec",
+  srs:    "Software Requirements",
   readme: "README",
-  adr:    "Architecture Decision Record",
+  adr:    "Architecture Decision",
 };
 
-export default function Home() {
-  const [view, setView]                   = useState<View>("explorer");
-  const [selectedFeatureId, setSelectedFeatureId] = useState<string | null>(null);
-  const [docContent, setDocContent]       = useState<string | null>(null);
-  const [docType, setDocType]             = useState<DocType | null>(null);
-  const [docLoading, setDocLoading]       = useState<DocType | null>(null);
-  const [runs, setRuns]                   = useState<any[]>([]);
+const NAV_ITEMS: { id: View; label: string; icon: React.ReactNode }[] = [
+  {
+    id: "explorer",
+    label: "Feature Explorer",
+    icon: <GitBranch size={15} />,
+  },
+  {
+    id: "chat",
+    label: "AI Chat",
+    icon: <MessageSquare size={15} />,
+  },
+];
 
-  // Load run history once
+export default function Home() {
+  const [view, setView]                         = useState<View>("explorer");
+  const [selectedFeatureId, setSelectedFeatureId] = useState<string | null>(null);
+  const [docContent, setDocContent]             = useState<string | null>(null);
+  const [docType, setDocType]                   = useState<DocType | null>(null);
+  const [docLoading, setDocLoading]             = useState<DocType | null>(null);
+  const [runs, setRuns]                         = useState<any[]>([]);
+  const [runsExpanded, setRunsExpanded]         = useState(false);
+  const [docsExpanded, setDocsExpanded]         = useState(true);
+
   useEffect(() => {
     fetch("http://localhost:8000/api/v1/analysis/runs")
       .then((r) => r.json())
@@ -40,7 +78,6 @@ export default function Home() {
   async function openDoc(type: DocType) {
     setDocLoading(type);
     try {
-      // Fetch as markdown for the viewer
       const res = await fetch("http://localhost:8000/api/v1/docs/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -70,75 +107,317 @@ export default function Home() {
   }
 
   return (
-    <div className="flex h-screen bg-gray-950 text-gray-100">
-      {/* Sidebar */}
-      <aside className="w-64 border-r border-gray-800 flex flex-col p-4 gap-4">
-        <div className="flex items-center gap-2 py-2">
-          <span className="text-lg font-bold text-blue-400">Companion</span>
-          <span className="text-xs text-gray-500 mt-1">v0.1</span>
+    <div className="app-shell">
+      {/* ── Sidebar ─────────────────────────────────────────────────── */}
+      <aside className="app-sidebar">
+
+        {/* Logo + version */}
+        <div
+          style={{
+            padding: "var(--space-4) var(--space-4) var(--space-3)",
+            borderBottom: "1px solid var(--border-subtle)",
+            flexShrink: 0,
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)" }}>
+            {/* Logo mark */}
+            <div
+              style={{
+                width: 24,
+                height: 24,
+                borderRadius: "var(--radius-md)",
+                background: "linear-gradient(135deg, var(--accent-blue), var(--color-purple))",
+                flexShrink: 0,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <GitBranch size={13} color="#fff" />
+            </div>
+            <span
+              style={{
+                fontSize: "var(--text-md)",
+                fontWeight: "var(--weight-semibold)",
+                color: "var(--text-primary)",
+                letterSpacing: "-0.02em",
+              }}
+            >
+              Companion
+            </span>
+            <span
+              style={{
+                marginLeft: "auto",
+                fontSize: "var(--text-2xs)",
+                color: "var(--text-disabled)",
+                fontFamily: "var(--font-mono)",
+              }}
+            >
+              v0.1
+            </span>
+          </div>
         </div>
 
-        <ProjectSwitcher />
+        {/* Project switcher */}
+        <div
+          style={{
+            padding: "var(--space-3) var(--space-3)",
+            borderBottom: "1px solid var(--border-subtle)",
+            flexShrink: 0,
+          }}
+        >
+          <ProjectSwitcher />
+        </div>
 
-        <nav className="flex flex-col gap-1">
-          {(["explorer", "chat"] as View[]).map((v) => (
+        {/* Primary navigation */}
+        <nav
+          style={{
+            padding: "var(--space-2) var(--space-2)",
+            flexShrink: 0,
+          }}
+        >
+          {NAV_ITEMS.map((item) => (
             <button
-              key={v}
-              onClick={() => setView(v)}
-              className={`px-3 py-2 rounded text-left text-sm transition-colors ${
-                view === v ? "bg-blue-600 text-white" : "text-gray-400 hover:bg-gray-800"
-              }`}
+              key={item.id}
+              onClick={() => setView(item.id)}
+              className={`sidebar-nav-item ${view === item.id ? "active" : ""}`}
             >
-              {v === "explorer" ? "Feature Explorer" : "AI Chat"}
+              {item.icon}
+              <span>{item.label}</span>
             </button>
           ))}
         </nav>
 
-        {/* Run history */}
-        {runs.length > 0 && (
-          <div className="flex flex-col gap-1">
-            <div className="flex items-center gap-1.5 text-xs text-gray-600 uppercase tracking-wider">
-              <History size={11} />
-              Recent Analyses
-            </div>
-            {runs.slice(0, 5).map((r) => (
-              <div key={r.id} className="px-2 py-1.5 rounded bg-gray-900 border border-gray-800">
-                <p className="text-xs text-gray-300 font-medium truncate">{r.repo_name || "Unknown"}</p>
-                <div className="flex items-center justify-between mt-0.5">
-                  <span className="text-xs text-gray-600">{r.features_out} features</span>
-                  <span className="text-xs text-gray-700">
-                    {r.completed_at ? new Date(r.completed_at).toLocaleDateString() : ""}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        <div className="mt-auto flex flex-col gap-2">
-          <p className="text-xs text-gray-600 uppercase tracking-wider">Generate Docs</p>
-          {(Object.keys(DOC_LABELS) as DocType[]).map((t) => (
-            <button
-              key={t}
-              onClick={() => openDoc(t)}
-              disabled={!!docLoading}
-              className="flex items-center gap-2 px-3 py-1.5 text-xs text-gray-400 hover:text-gray-200 hover:bg-gray-800 rounded transition-colors disabled:opacity-50"
+        {/* Scrollable lower section */}
+        <div
+          style={{
+            flex: 1,
+            overflowY: "auto",
+            display: "flex",
+            flexDirection: "column",
+            gap: "var(--space-1)",
+          }}
+        >
+          {/* Run history — collapsible */}
+          {runs.length > 0 && (
+            <div
+              style={{
+                borderTop: "1px solid var(--border-subtle)",
+                padding: "var(--space-2) var(--space-2)",
+              }}
             >
-              {docLoading === t
-                ? <Loader2 size={13} className="animate-spin" />
-                : <FileText size={13} />
-              }
-              {t.toUpperCase()}
-            </button>
-          ))}
-          <div className="border-t border-gray-800 pt-2">
+              <button
+                onClick={() => setRunsExpanded(!runsExpanded)}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "var(--space-1)",
+                  width: "100%",
+                  padding: "var(--space-1) var(--space-2)",
+                  background: "transparent",
+                  border: "none",
+                  cursor: "pointer",
+                  color: "var(--text-tertiary)",
+                  borderRadius: "var(--radius-sm)",
+                }}
+              >
+                <History size={11} />
+                <span className="label-section" style={{ flex: 1, textAlign: "left" }}>
+                  Recent Analyses
+                </span>
+                <span
+                  style={{
+                    fontSize: "var(--text-2xs)",
+                    background: "var(--surface-overlay)",
+                    color: "var(--text-secondary)",
+                    borderRadius: "var(--radius-full)",
+                    padding: "0 6px",
+                    lineHeight: "18px",
+                    border: "1px solid var(--border-subtle)",
+                  }}
+                >
+                  {runs.length}
+                </span>
+                {runsExpanded
+                  ? <ChevronDown size={11} />
+                  : <ChevronRight size={11} />
+                }
+              </button>
+
+              {runsExpanded && (
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "var(--space-1)",
+                    marginTop: "var(--space-1)",
+                    padding: "0 var(--space-1)",
+                  }}
+                >
+                  {runs.slice(0, 5).map((r) => (
+                    <div
+                      key={r.id}
+                      style={{
+                        padding: "var(--space-2) var(--space-3)",
+                        borderRadius: "var(--radius-md)",
+                        background: "var(--surface-overlay)",
+                        border: "1px solid var(--border-subtle)",
+                      }}
+                    >
+                      <p
+                        style={{
+                          fontSize: "var(--text-xs)",
+                          fontWeight: "var(--weight-medium)",
+                          color: "var(--text-secondary)",
+                          margin: 0,
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {r.repo_name || "Unknown"}
+                      </p>
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          marginTop: "var(--space-1)",
+                        }}
+                      >
+                        <span className="badge badge-blue">{r.features_out} features</span>
+                        <span
+                          style={{
+                            fontSize: "var(--text-2xs)",
+                            color: "var(--text-disabled)",
+                            fontFamily: "var(--font-mono)",
+                          }}
+                        >
+                          {r.completed_at
+                            ? new Date(r.completed_at).toLocaleDateString(undefined, {
+                                month: "short",
+                                day: "numeric",
+                              })
+                            : ""}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Bottom tools section */}
+        <div
+          style={{
+            borderTop: "1px solid var(--border-subtle)",
+            padding: "var(--space-2) var(--space-2)",
+            flexShrink: 0,
+          }}
+        >
+          {/* Generate Docs — collapsible */}
+          <button
+            onClick={() => setDocsExpanded(!docsExpanded)}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "var(--space-1)",
+              width: "100%",
+              padding: "var(--space-1) var(--space-2)",
+              background: "transparent",
+              border: "none",
+              cursor: "pointer",
+              color: "var(--text-tertiary)",
+              borderRadius: "var(--radius-sm)",
+              marginBottom: "var(--space-1)",
+            }}
+          >
+            <FileText size={11} />
+            <span className="label-section" style={{ flex: 1, textAlign: "left" }}>
+              Generate Docs
+            </span>
+            {docsExpanded ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
+          </button>
+
+          {docsExpanded && (
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "var(--space-1)",
+                paddingBottom: "var(--space-1)",
+              }}
+            >
+              {(Object.keys(DOC_LABELS) as DocType[]).map((t) => (
+                <button
+                  key={t}
+                  onClick={() => openDoc(t)}
+                  disabled={!!docLoading}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "var(--space-2)",
+                    padding: "var(--space-2) var(--space-3)",
+                    borderRadius: "var(--radius-md)",
+                    background: "transparent",
+                    border: "1px solid transparent",
+                    cursor: docLoading ? "not-allowed" : "pointer",
+                    opacity: docLoading && docLoading !== t ? 0.5 : 1,
+                    transition: "background var(--duration-fast), border-color var(--duration-fast)",
+                    textAlign: "left",
+                    width: "100%",
+                    color:
+                      docLoading === t
+                        ? "var(--accent-blue-text)"
+                        : "var(--text-secondary)",
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!docLoading) {
+                      (e.currentTarget as HTMLElement).style.background = "var(--surface-hover)";
+                      (e.currentTarget as HTMLElement).style.borderColor = "var(--border-subtle)";
+                      (e.currentTarget as HTMLElement).style.color = "var(--text-primary)";
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    (e.currentTarget as HTMLElement).style.background = "transparent";
+                    (e.currentTarget as HTMLElement).style.borderColor = "transparent";
+                    (e.currentTarget as HTMLElement).style.color =
+                      docLoading === t ? "var(--accent-blue-text)" : "var(--text-secondary)";
+                  }}
+                >
+                  {docLoading === t ? (
+                    <Loader2 size={13} className="animate-spin" style={{ color: "var(--accent-blue)" }} />
+                  ) : (
+                    <FileText size={13} style={{ color: "var(--text-disabled)" }} />
+                  )}
+                  <span style={{ fontSize: "var(--text-xs)", fontWeight: "var(--weight-medium)" }}>
+                    {DOC_LABELS[t]}
+                  </span>
+                  {docLoading === t && (
+                    <span
+                      style={{
+                        marginLeft: "auto",
+                        fontSize: "var(--text-2xs)",
+                        color: "var(--accent-blue-text)",
+                      }}
+                    >
+                      Generating…
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+
+          <div style={{ borderTop: "1px solid var(--border-subtle)", paddingTop: "var(--space-2)" }}>
             <QuickStart />
           </div>
         </div>
       </aside>
 
-      {/* Main content */}
-      <main className="flex-1 overflow-hidden">
+      {/* ── Main workspace ──────────────────────────────────────────── */}
+      <main className="app-main">
         {view === "explorer" ? (
           <FeatureExplorer onFeatureSelect={setSelectedFeatureId} />
         ) : (
@@ -146,7 +425,7 @@ export default function Home() {
         )}
       </main>
 
-      {/* Doc drawer */}
+      {/* ── Doc drawer ──────────────────────────────────────────────── */}
       {docContent && docType && (
         <DocViewer
           title={DOC_LABELS[docType]}

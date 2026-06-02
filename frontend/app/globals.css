@@ -2,39 +2,468 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ─────────────────────────────────────────────────────────────────────────────
+   COMPANION DESIGN TOKENS
+   All raw values live here as CSS variables. Tailwind classes remain as
+   utilities for layout/flex/spacing, but any colour or typography that
+   appears more than once must use these tokens.
+   ───────────────────────────────────────────────────────────────────────── */
+
 :root {
-  --background: #030712;
-  --foreground: #f9fafb;
+  /* ── Surface scale (dark-first) ─────────────────────────────── */
+  --surface-base:    #080c14;   /* page background                         */
+  --surface-raised:  #0f1520;   /* sidebar, panels                         */
+  --surface-overlay: #161d2e;   /* cards, detail panel sections            */
+  --surface-sunken:  #0b1018;   /* code blocks, input fields               */
+  --surface-hover:   #1e2a40;   /* hover states on interactive elements    */
+  --surface-active:  #1a3050;   /* pressed / selected backgrounds          */
+
+  /* ── Border scale ────────────────────────────────────────────── */
+  --border-subtle:  rgba(255,255,255,0.06);   /* hairline dividers        */
+  --border-default: rgba(255,255,255,0.10);   /* standard borders         */
+  --border-strong:  rgba(255,255,255,0.18);   /* focused / emphasized     */
+
+  /* ── Text scale (all pass WCAG AA on --surface-base) ────────── */
+  --text-primary:   #e8edf5;   /* headings, important content  — 12.6:1   */
+  --text-secondary: #8fa3bf;   /* body, descriptions           —  5.8:1   */
+  --text-tertiary:  #566a84;   /* labels, metadata             —  3.8:1 (use only on large/bold text) */
+  --text-disabled:  #3a4d62;   /* inactive                                */
+
+  /* ── Brand / accent ──────────────────────────────────────────── */
+  --accent-blue:        #3b82f6;
+  --accent-blue-dim:    #1d4ed8;
+  --accent-blue-text:   #93c5fd;   /* blue text on dark surfaces           */
+  --accent-blue-muted:  rgba(59,130,246,0.15);
+
+  /* ── Semantic colours ────────────────────────────────────────── */
+  --color-success:       #10b981;
+  --color-success-muted: rgba(16,185,129,0.15);
+  --color-warning:       #f59e0b;
+  --color-warning-muted: rgba(245,158,11,0.15);
+  --color-danger:        #ef4444;
+  --color-danger-muted:  rgba(239,68,68,0.15);
+  --color-purple:        #8b5cf6;
+  --color-purple-muted:  rgba(139,92,246,0.15);
+  --color-cyan:          #06b6d4;
+  --color-cyan-muted:    rgba(6,182,212,0.15);
+
+  /* ── Domain colours (knowledge graph) ───────────────────────── */
+  --domain-auth:     #8b5cf6;
+  --domain-billing:  #10b981;
+  --domain-workflow: #f59e0b;
+  --domain-data:     #3b82f6;
+  --domain-api:      #06b6d4;
+  --domain-infra:    #64748b;
+  --domain-unknown:  #475569;
+
+  /* ── Typography ──────────────────────────────────────────────── */
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", "Fira Code", "Cascadia Code", ui-monospace, monospace;
+
+  --text-2xs:  11px;   /* metadata, badges        */
+  --text-xs:   12px;   /* labels, secondary text  */
+  --text-sm:   13px;   /* body, list items        */
+  --text-base: 14px;   /* default UI text         */
+  --text-md:   15px;   /* emphasis, subheadings   */
+  --text-lg:   17px;   /* panel headings          */
+  --text-xl:   20px;   /* page titles             */
+
+  --leading-tight:  1.3;
+  --leading-normal: 1.5;
+  --leading-loose:  1.75;
+
+  --weight-normal:   400;
+  --weight-medium:   500;
+  --weight-semibold: 600;
+
+  /* ── Spacing (4pt grid) ──────────────────────────────────────── */
+  --space-1:  4px;
+  --space-2:  8px;
+  --space-3:  12px;
+  --space-4:  16px;
+  --space-5:  20px;
+  --space-6:  24px;
+  --space-8:  32px;
+  --space-10: 40px;
+
+  /* ── Layout ──────────────────────────────────────────────────── */
+  --sidebar-width:      224px;
+  --detail-panel-width: 360px;
+  --header-height:       48px;
+
+  /* ── Radius ──────────────────────────────────────────────────── */
+  --radius-sm:  4px;
+  --radius-md:  6px;
+  --radius-lg:  10px;
+  --radius-xl:  14px;
+  --radius-full: 999px;
+
+  /* ── Shadows ─────────────────────────────────────────────────── */
+  --shadow-sm:  0 1px 3px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3);
+  --shadow-md:  0 4px 12px rgba(0,0,0,0.5), 0 2px 4px rgba(0,0,0,0.3);
+  --shadow-lg:  0 12px 32px rgba(0,0,0,0.6), 0 4px 8px rgba(0,0,0,0.4);
+  --shadow-panel: -2px 0 24px rgba(0,0,0,0.5);
+
+  /* ── Motion ──────────────────────────────────────────────────── */
+  --duration-fast:   100ms;
+  --duration-normal: 180ms;
+  --duration-slow:   300ms;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in:  cubic-bezier(0.7, 0, 0.84, 0);
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-}
+/* ─────────────────────────────────────────────────────────────────────────────
+   BASE RESET & DEFAULTS
+   ───────────────────────────────────────────────────────────────────────── */
 
-* {
+*, *::before, *::after {
   box-sizing: border-box;
 }
 
-/* ReactFlow dark mode overrides */
+html {
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  margin: 0;
+  background: var(--surface-base);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   REUSABLE COMPONENT PRIMITIVES
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* Section label (ALL CAPS metadata labels) */
+.label-section {
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+/* Pill / badge */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-medium);
+  padding: 2px 7px;
+  border-radius: var(--radius-full);
+  border: 1px solid transparent;
+}
+.badge-blue   { background: var(--accent-blue-muted);    color: var(--accent-blue-text); border-color: rgba(59,130,246,0.2); }
+.badge-green  { background: var(--color-success-muted);  color: #6ee7b7; }
+.badge-purple { background: var(--color-purple-muted);   color: #c4b5fd; }
+.badge-amber  { background: var(--color-warning-muted);  color: #fcd34d; }
+.badge-cyan   { background: var(--color-cyan-muted);     color: #67e8f9; }
+.badge-gray   { background: var(--surface-overlay);      color: var(--text-secondary); border-color: var(--border-subtle); }
+
+/* Icon button */
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-md);
+  color: var(--text-tertiary);
+  transition: background var(--duration-fast), color var(--duration-fast);
+  cursor: pointer;
+  border: none;
+  background: transparent;
+}
+.icon-btn:hover {
+  background: var(--surface-hover);
+  color: var(--text-secondary);
+}
+.icon-btn:active {
+  background: var(--surface-active);
+  color: var(--text-primary);
+}
+
+/* Focus ring — consistent across all interactive elements */
+:focus-visible {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* Scrollbar — unobtrusive on dark surfaces */
+::-webkit-scrollbar       { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--surface-hover); border-radius: var(--radius-full); }
+::-webkit-scrollbar-thumb:hover { background: var(--border-strong); }
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   LAYOUT UTILITIES
+   ───────────────────────────────────────────────────────────────────────── */
+
+.app-shell {
+  display: flex;
+  height: 100svh;
+  overflow: hidden;
+  background: var(--surface-base);
+}
+
+.app-sidebar {
+  width: var(--sidebar-width);
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-raised);
+  border-right: 1px solid var(--border-subtle);
+  overflow: hidden;
+}
+
+.app-main {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.detail-panel {
+  width: var(--detail-panel-width);
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-raised);
+  border-left: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-panel);
+  /* Slide-in animation */
+  animation: panel-enter var(--duration-slow) var(--ease-out);
+}
+
+@keyframes panel-enter {
+  from { transform: translateX(16px); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   SIDEBAR NAVIGATION
+   ───────────────────────────────────────────────────────────────────────── */
+
+.sidebar-nav-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--text-secondary);
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  width: 100%;
+  text-align: left;
+  transition: background var(--duration-fast), color var(--duration-fast);
+}
+.sidebar-nav-item:hover {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+}
+.sidebar-nav-item.active {
+  background: var(--accent-blue-muted);
+  color: var(--accent-blue-text);
+}
+.sidebar-nav-item.active svg {
+  color: var(--accent-blue);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   REACTFLOW DARK MODE OVERRIDES
+   ───────────────────────────────────────────────────────────────────────── */
+
 .react-flow__controls {
-  background: #1f2937 !important;
-  border: 1px solid #374151 !important;
-  border-radius: 6px;
+  background: var(--surface-overlay) !important;
+  border: 1px solid var(--border-default) !important;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
 }
 .react-flow__controls-button {
-  background: #1f2937 !important;
-  border-bottom: 1px solid #374151 !important;
-  fill: #9ca3af !important;
+  background: var(--surface-overlay) !important;
+  border-bottom: 1px solid var(--border-subtle) !important;
+  fill: var(--text-tertiary) !important;
+  transition: background var(--duration-fast);
 }
 .react-flow__controls-button:hover {
-  background: #374151 !important;
+  background: var(--surface-hover) !important;
+  fill: var(--text-secondary) !important;
 }
 .react-flow__edge-path {
-  stroke: #4b5563;
+  stroke: var(--border-default);
 }
 .react-flow__edge-text {
-  fill: #9ca3af;
-  font-size: 11px;
+  fill: var(--text-tertiary);
+  font-size: var(--text-2xs);
+}
+.react-flow__background {
+  background: var(--surface-base);
+}
+.react-flow__panel {
+  margin: var(--space-4) !important;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   CHAT INTERFACE
+   ───────────────────────────────────────────────────────────────────────── */
+
+.chat-bubble-user {
+  background: var(--accent-blue-dim);
+  color: #fff;
+  border-radius: var(--radius-lg) var(--radius-lg) var(--radius-sm) var(--radius-lg);
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--text-sm);
+  max-width: 72ch;
+  box-shadow: var(--shadow-sm);
+}
+
+.chat-bubble-assistant {
+  background: var(--surface-overlay);
+  color: var(--text-primary);
+  border-radius: var(--radius-sm) var(--radius-lg) var(--radius-lg) var(--radius-lg);
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--text-sm);
+  max-width: 80ch;
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-sm);
+}
+
+.chat-input {
+  background: var(--surface-overlay);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  transition: border-color var(--duration-fast);
+  width: 100%;
+  outline: none;
+}
+.chat-input::placeholder { color: var(--text-disabled); }
+.chat-input:focus { border-color: var(--accent-blue); }
+
+/* Typing / streaming cursor */
+@keyframes cursor-blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+.streaming-cursor::after {
+  content: "▋";
+  display: inline-block;
+  font-size: 0.9em;
+  vertical-align: middle;
+  margin-left: 2px;
+  color: var(--accent-blue);
+  animation: cursor-blink 0.75s step-end infinite;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   PROSE / MARKDOWN (inside chat assistant bubbles)
+   ───────────────────────────────────────────────────────────────────────── */
+
+.companion-prose {
+  color: var(--text-primary);
+  line-height: var(--leading-loose);
+}
+.companion-prose h1, .companion-prose h2, .companion-prose h3 {
+  color: var(--text-primary);
+  font-weight: var(--weight-semibold);
+  margin-top: var(--space-4);
+  margin-bottom: var(--space-2);
+}
+.companion-prose h1 { font-size: var(--text-lg); }
+.companion-prose h2 { font-size: var(--text-md); }
+.companion-prose h3 { font-size: var(--text-base); }
+.companion-prose p  { margin: var(--space-2) 0; color: var(--text-secondary); }
+.companion-prose strong { color: var(--text-primary); font-weight: var(--weight-semibold); }
+.companion-prose code {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  background: var(--surface-sunken);
+  color: var(--accent-blue-text);
+  padding: 1px 5px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+}
+.companion-prose pre {
+  background: var(--surface-sunken);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  overflow-x: auto;
+  margin: var(--space-3) 0;
+}
+.companion-prose pre code { background: none; border: none; padding: 0; }
+.companion-prose ul, .companion-prose ol {
+  padding-left: var(--space-5);
+  color: var(--text-secondary);
+}
+.companion-prose li { margin: var(--space-1) 0; }
+.companion-prose blockquote {
+  border-left: 3px solid var(--accent-blue);
+  padding-left: var(--space-3);
+  color: var(--text-secondary);
+  font-style: italic;
+  margin: var(--space-3) 0;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   CODE VIEWER (SyntaxHighlighter host)
+   ───────────────────────────────────────────────────────────────────────── */
+
+.code-viewer {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--surface-sunken);
+}
+.code-viewer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-2) var(--space-3);
+  background: var(--surface-overlay);
+  border-bottom: 1px solid var(--border-subtle);
+}
+.code-viewer-header span {
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  color: var(--text-tertiary);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   FEATURE NODE (ReactFlow)
+   ───────────────────────────────────────────────────────────────────────── */
+
+.feature-node {
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(255,255,255,0.12);
+  padding: 6px 10px;
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-medium);
+  color: #fff;
+  width: 160px;
+  text-align: center;
+  cursor: pointer;
+  transition: box-shadow var(--duration-fast), border-color var(--duration-fast);
+}
+.feature-node:hover {
+  border-color: rgba(255,255,255,0.28);
+  box-shadow: 0 0 0 3px rgba(59,130,246,0.2);
+}
+.feature-node.selected {
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 3px rgba(59,130,246,0.35), var(--shadow-md);
 }

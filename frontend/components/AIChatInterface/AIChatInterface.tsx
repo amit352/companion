@@ -1,85 +1,122 @@
 "use client";
-import { FormEvent, useRef, useState } from "react";
-import { Send, ThumbsUp, ThumbsDown } from "lucide-react";
+import { FormEvent, useEffect, useRef, useState } from "react";
+import { Send, ThumbsUp, ThumbsDown, MessageSquare, X } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 
 const API = "http://localhost:8000";
 
 interface Message {
-  role: "user" | "assistant";
-  content: string;
-  source?: "graph" | "llm";
-  question?: string;   // store paired question for feedback
-  rated?: "up" | "down";
+  role:      "user" | "assistant";
+  content:   string;
+  source?:   "graph" | "llm";
+  question?: string;
+  rated?:    "up" | "down";
+  streaming?: boolean;
 }
 
-const SUGGESTIONS = [
-  "What breaks if auth changes?",
-  "What breaks if Invoice Fee Calculation changes?",
-  "List billing features",
-  "List all features",
-];
+interface FeatureContext {
+  id:   string;
+  name: string;
+}
 
 interface Props {
   featureId: string | null;
 }
 
-export default function AIChatInterface({ featureId }: Props) {
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(false);
-  const bottomRef = useRef<HTMLDivElement>(null);
+const SUGGESTIONS = [
+  "What breaks if auth changes?",
+  "What breaks if Invoice Fee Calculation changes?",
+  "List all billing features",
+  "Which features have the highest blast radius?",
+];
 
-  const append = (content: string, source?: "graph" | "llm", question?: string) =>
-    setMessages((m) => {
-      const last = m[m.length - 1];
+// Fetches the feature name so we can display it in the context chip.
+// We cache the result to avoid duplicate requests.
+const nameCache = new Map<string, string>();
+
+async function resolveFeatureName(id: string): Promise<string> {
+  if (nameCache.has(id)) return nameCache.get(id)!;
+  try {
+    const res  = await fetch(`${API}/api/v1/features/${id}/full`);
+    const data = await res.json();
+    const name = data?.feature?.name ?? id;
+    nameCache.set(id, name);
+    return name;
+  } catch {
+    return id;
+  }
+}
+
+export default function AIChatInterface({ featureId }: Props) {
+  const [messages, setMessages]             = useState<Message[]>([]);
+  const [input, setInput]                   = useState("");
+  const [loading, setLoading]               = useState(false);
+  const [featureCtx, setFeatureCtx]         = useState<FeatureContext | null>(null);
+  const bottomRef                           = useRef<HTMLDivElement>(null);
+  const inputRef                            = useRef<HTMLInputElement>(null);
+
+  // Resolve feature name whenever featureId changes
+  useEffect(() => {
+    if (!featureId) { setFeatureCtx(null); return; }
+    resolveFeatureName(featureId).then((name) => setFeatureCtx({ id: featureId, name }));
+  }, [featureId]);
+
+  function scrollToBottom(smooth = true) {
+    bottomRef.current?.scrollIntoView({ behavior: smooth ? "smooth" : "instant" });
+  }
+
+  function append(content: string, source?: "graph" | "llm", question?: string, streaming = false) {
+    setMessages((prev) => {
+      const last = prev[prev.length - 1];
       if (last?.role === "assistant") {
-        return [...m.slice(0, -1), { ...last, content, source, question: question ?? last.question }];
+        return [
+          ...prev.slice(0, -1),
+          { ...last, content, source, question: question ?? last.question, streaming },
+        ];
       }
-      return [...m, { role: "assistant", content, source, question }];
+      return [...prev, { role: "assistant", content, source, question, streaming }];
     });
+  }
 
   async function rateFeedback(msg: Message, verdict: "up" | "down") {
-    setMessages((m) => m.map((x) =>
-      x === msg ? { ...x, rated: verdict } : x
-    ));
+    setMessages((prev) => prev.map((x) => (x === msg ? { ...x, rated: verdict } : x)));
     await fetch(`${API}/api/v1/chat/feedback`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         question: msg.question ?? "",
-        answer: msg.content,
-        source: msg.source ?? "graph",
-        verdict: verdict === "up" ? "correct" : "wrong",
+        answer:   msg.content,
+        source:   msg.source ?? "graph",
+        verdict:  verdict === "up" ? "correct" : "wrong",
       }),
     }).catch(() => {});
   }
 
-  const sendMessage = async (question: string) => {
+  async function sendMessage(question: string) {
     if (!question.trim() || loading) return;
     setInput("");
-    setMessages((m) => [
-      ...m,
-      { role: "user", content: question },
-      { role: "assistant", content: "", question },
+    setMessages((prev) => [
+      ...prev,
+      { role: "user",      content: question },
+      { role: "assistant", content: "", question, streaming: true },
     ]);
     setLoading(true);
+    scrollToBottom();
 
     try {
       const res = await fetch(`${API}/api/v1/chat/`, {
-        method: "POST",
+        method:  "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question, feature_id: featureId }),
+        body:    JSON.stringify({ question, feature_id: featureId }),
       });
 
       const contentType = res.headers.get("content-type") ?? "";
 
       if (contentType.includes("application/json")) {
         const data = await res.json();
-        append(data.answer, "graph", question);
+        append(data.answer, "graph", question, false);
       } else {
-        // LLM streaming answer
-        const reader = res.body?.getReader();
+        const reader  = res.body?.getReader();
         const decoder = new TextDecoder();
         if (!reader) return;
         let full = "";
@@ -87,30 +124,221 @@ export default function AIChatInterface({ featureId }: Props) {
           const { done, value } = await reader.read();
           if (done) break;
           full += decoder.decode(value);
-          append(full, "llm");
-          bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+          append(full, "llm", question, true);
+          scrollToBottom();
         }
+        append(full, "llm", question, false);
       }
-    } catch (e) {
-      append("⚠ Could not reach the API. Make sure the server is running on port 8000.");
+    } catch {
+      append(
+        "Could not reach the API. Make sure the server is running on port 8000.",
+        undefined,
+        question,
+        false
+      );
     } finally {
       setLoading(false);
-      bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+      scrollToBottom();
+      inputRef.current?.focus();
     }
-  };
+  }
+
+  const showSuggestions = messages.length === 0;
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex-1 overflow-y-auto p-6 space-y-4">
-        {messages.length === 0 && (
-          <div className="flex flex-col items-center justify-center h-full gap-6">
-            <p className="text-gray-500 text-sm">Ask anything about your codebase</p>
-            <div className="grid grid-cols-2 gap-2 max-w-lg">
+    <div
+      style={{
+        display:       "flex",
+        flexDirection: "column",
+        height:        "100%",
+        background:    "var(--surface-base)",
+      }}
+    >
+      {/* ── Toolbar ─────────────────────────────────────────────────── */}
+      <div
+        style={{
+          display:       "flex",
+          alignItems:    "center",
+          gap:           "var(--space-3)",
+          padding:       "0 var(--space-4)",
+          height:        40,
+          borderBottom:  "1px solid var(--border-subtle)",
+          flexShrink:    0,
+          background:    "var(--surface-raised)",
+        }}
+      >
+        <MessageSquare size={14} style={{ color: "var(--text-tertiary)" }} />
+        <span
+          style={{
+            fontSize:   "var(--text-xs)",
+            fontWeight: "var(--weight-semibold)",
+            color:      "var(--text-secondary)",
+            letterSpacing: "0.01em",
+          }}
+        >
+          AI Chat
+        </span>
+
+        {/* Feature context chip */}
+        {featureCtx && (
+          <div
+            style={{
+              display:     "flex",
+              alignItems:  "center",
+              gap:         "var(--space-1)",
+              marginLeft:  "var(--space-2)",
+              padding:     "2px 6px 2px 8px",
+              borderRadius: "var(--radius-full)",
+              background:  "var(--accent-blue-muted)",
+              border:      "1px solid rgba(59,130,246,0.25)",
+              color:       "var(--accent-blue-text)",
+              fontSize:    "var(--text-2xs)",
+              fontWeight:  "var(--weight-medium)",
+            }}
+          >
+            <span
+              style={{
+                width:        5,
+                height:       5,
+                borderRadius: "var(--radius-full)",
+                background:   "var(--accent-blue)",
+                flexShrink:   0,
+              }}
+            />
+            Context: {featureCtx.name}
+            <button
+              onClick={() => setFeatureCtx(null)}
+              style={{
+                marginLeft:  "var(--space-1)",
+                background:  "transparent",
+                border:      "none",
+                cursor:      "pointer",
+                color:       "inherit",
+                opacity:     0.7,
+                padding:     0,
+                lineHeight:  1,
+                display:     "flex",
+              }}
+              title="Clear context"
+            >
+              <X size={10} />
+            </button>
+          </div>
+        )}
+
+        {/* Message count badge */}
+        {messages.length > 0 && (
+          <span
+            className="badge badge-gray"
+            style={{ marginLeft: "auto" }}
+          >
+            {Math.floor(messages.length / 2)} turn{messages.length / 2 !== 1 ? "s" : ""}
+          </span>
+        )}
+      </div>
+
+      {/* ── Message list ────────────────────────────────────────────── */}
+      <div
+        style={{
+          flex:      1,
+          overflowY: "auto",
+          padding:   "var(--space-6) var(--space-6)",
+          display:   "flex",
+          flexDirection: "column",
+          gap:       "var(--space-4)",
+        }}
+      >
+        {/* Empty state */}
+        {showSuggestions && (
+          <div
+            style={{
+              display:        "flex",
+              flexDirection:  "column",
+              alignItems:     "center",
+              justifyContent: "center",
+              flex:           1,
+              gap:            "var(--space-6)",
+              paddingBottom:  "var(--space-8)",
+            }}
+          >
+            <div style={{ textAlign: "center" }}>
+              <div
+                style={{
+                  width:        40,
+                  height:       40,
+                  borderRadius: "var(--radius-xl)",
+                  background:   "var(--surface-overlay)",
+                  border:       "1px solid var(--border-default)",
+                  display:      "flex",
+                  alignItems:   "center",
+                  justifyContent: "center",
+                  margin:       "0 auto var(--space-3)",
+                }}
+              >
+                <MessageSquare size={18} style={{ color: "var(--text-tertiary)" }} />
+              </div>
+              <p
+                style={{
+                  margin:     0,
+                  fontSize:   "var(--text-base)",
+                  fontWeight: "var(--weight-semibold)",
+                  color:      "var(--text-secondary)",
+                }}
+              >
+                Ask anything about your codebase
+              </p>
+              <p
+                style={{
+                  margin:   "var(--space-1) 0 0",
+                  fontSize: "var(--text-xs)",
+                  color:    "var(--text-tertiary)",
+                }}
+              >
+                {featureCtx
+                  ? `Currently scoped to: ${featureCtx.name}`
+                  : "Select a feature in the graph to scope your question"}
+              </p>
+            </div>
+
+            {/* Suggestion chips */}
+            <div
+              style={{
+                display:             "grid",
+                gridTemplateColumns: "repeat(2, 1fr)",
+                gap:                 "var(--space-2)",
+                maxWidth:            480,
+                width:               "100%",
+              }}
+            >
               {SUGGESTIONS.map((s) => (
                 <button
                   key={s}
                   onClick={() => sendMessage(s)}
-                  className="text-left text-xs px-3 py-2 rounded border border-gray-700 text-gray-400 hover:border-blue-500 hover:text-blue-400 transition-colors"
+                  style={{
+                    textAlign:    "left",
+                    padding:      "var(--space-3)",
+                    borderRadius: "var(--radius-lg)",
+                    background:   "var(--surface-overlay)",
+                    border:       "1px solid var(--border-default)",
+                    cursor:       "pointer",
+                    color:        "var(--text-secondary)",
+                    fontSize:     "var(--text-xs)",
+                    fontWeight:   "var(--weight-medium)",
+                    lineHeight:   "var(--leading-normal)",
+                    transition:   "background var(--duration-fast), border-color var(--duration-fast), color var(--duration-fast)",
+                  }}
+                  onMouseEnter={(e) => {
+                    const el = e.currentTarget as HTMLElement;
+                    el.style.background    = "var(--surface-hover)";
+                    el.style.borderColor   = "var(--accent-blue)";
+                    el.style.color         = "var(--text-primary)";
+                  }}
+                  onMouseLeave={(e) => {
+                    const el = e.currentTarget as HTMLElement;
+                    el.style.background    = "var(--surface-overlay)";
+                    el.style.borderColor   = "var(--border-default)";
+                    el.style.color         = "var(--text-secondary)";
+                  }}
                 >
                   {s}
                 </button>
@@ -119,72 +347,164 @@ export default function AIChatInterface({ featureId }: Props) {
           </div>
         )}
 
+        {/* Messages */}
         {messages.map((msg, i) => (
-          <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-            <div className={`max-w-2xl rounded-lg text-sm ${
-              msg.role === "user"
-                ? "bg-blue-600 text-white px-4 py-2"
-                : "bg-gray-800 text-gray-200 px-4 py-3"
-            }`}>
-              {msg.role === "assistant" ? (
-                <>
-                  {msg.content ? (
-                    <div className="prose prose-invert prose-sm max-w-none">
-                      <ReactMarkdown>{msg.content}</ReactMarkdown>
+          <div
+            key={i}
+            style={{
+              display:        "flex",
+              justifyContent: msg.role === "user" ? "flex-end" : "flex-start",
+            }}
+          >
+            {msg.role === "user" ? (
+              <div className="chat-bubble-user">{msg.content}</div>
+            ) : (
+              <div className="chat-bubble-assistant">
+                {msg.content ? (
+                  <div className={`companion-prose${msg.streaming ? " streaming-cursor" : ""}`}>
+                    <ReactMarkdown>{msg.content}</ReactMarkdown>
+                  </div>
+                ) : (
+                  /* Thinking placeholder */
+                  <div
+                    style={{
+                      display:    "flex",
+                      gap:        "var(--space-1)",
+                      alignItems: "center",
+                      padding:    "var(--space-1) 0",
+                    }}
+                  >
+                    {[0, 0.15, 0.3].map((delay, di) => (
+                      <div
+                        key={di}
+                        style={{
+                          width:            6,
+                          height:           6,
+                          borderRadius:     "var(--radius-full)",
+                          background:       "var(--text-disabled)",
+                          animation:        `bounce 1.2s ease-in-out ${delay}s infinite`,
+                        }}
+                      />
+                    ))}
+                  </div>
+                )}
+
+                {/* Source + feedback row */}
+                {msg.source && msg.content && !msg.streaming && (
+                  <div
+                    style={{
+                      display:        "flex",
+                      alignItems:     "center",
+                      justifyContent: "space-between",
+                      marginTop:      "var(--space-3)",
+                      paddingTop:     "var(--space-2)",
+                      borderTop:      "1px solid var(--border-subtle)",
+                    }}
+                  >
+                    <span
+                      className={
+                        msg.source === "graph"
+                          ? "badge badge-green"
+                          : "badge badge-purple"
+                      }
+                    >
+                      {msg.source === "graph" ? "From graph" : "From AI"}
+                    </span>
+
+                    <div style={{ display: "flex", gap: "var(--space-1)" }}>
+                      <button
+                        className="icon-btn"
+                        onClick={() => rateFeedback(msg, "up")}
+                        title="Correct"
+                        style={
+                          msg.rated === "up"
+                            ? { color: "var(--color-success)" }
+                            : {}
+                        }
+                      >
+                        <ThumbsUp size={12} />
+                      </button>
+                      <button
+                        className="icon-btn"
+                        onClick={() => rateFeedback(msg, "down")}
+                        title="Wrong"
+                        style={
+                          msg.rated === "down"
+                            ? { color: "var(--color-danger)" }
+                            : {}
+                        }
+                      >
+                        <ThumbsDown size={12} />
+                      </button>
                     </div>
-                  ) : (
-                    <span className="animate-pulse text-gray-500">Thinking…</span>
-                  )}
-                  {msg.source && msg.content && (
-                    <div className="mt-2 pt-2 border-t border-gray-700 flex items-center justify-between">
-                      <span className={`text-xs px-1.5 py-0.5 rounded ${
-                        msg.source === "graph" ? "bg-green-900 text-green-300" : "bg-purple-900 text-purple-300"
-                      }`}>
-                        {msg.source === "graph" ? "⬡ from graph" : "✦ from AI"}
-                      </span>
-                      <div className="flex gap-1">
-                        <button onClick={() => rateFeedback(msg, "up")}
-                          className={`p-1 rounded transition-colors ${msg.rated === "up" ? "text-green-400" : "text-gray-600 hover:text-gray-300"}`}
-                          title="Correct">
-                          <ThumbsUp size={12} />
-                        </button>
-                        <button onClick={() => rateFeedback(msg, "down")}
-                          className={`p-1 rounded transition-colors ${msg.rated === "down" ? "text-red-400" : "text-gray-600 hover:text-gray-300"}`}
-                          title="Wrong">
-                          <ThumbsDown size={12} />
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </>
-              ) : (
-                msg.content
-              )}
-            </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         ))}
-        <div ref={bottomRef} />
+        <div ref={bottomRef} style={{ height: 1 }} />
       </div>
 
+      {/* ── Input bar ───────────────────────────────────────────────── */}
       <form
         onSubmit={(e: FormEvent) => { e.preventDefault(); sendMessage(input); }}
-        className="p-4 border-t border-gray-800 flex gap-2"
+        style={{
+          display:      "flex",
+          gap:          "var(--space-2)",
+          padding:      "var(--space-3) var(--space-4)",
+          borderTop:    "1px solid var(--border-subtle)",
+          flexShrink:   0,
+          background:   "var(--surface-raised)",
+          alignItems:   "flex-end",
+        }}
       >
         <input
+          ref={inputRef}
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder={featureId ? "Ask about selected feature…" : "Ask about your codebase…"}
-          className="flex-1 bg-gray-800 rounded px-3 py-2 text-sm text-gray-200 placeholder-gray-500 outline-none focus:ring-1 focus:ring-blue-500"
+          placeholder={
+            featureCtx
+              ? `Ask about ${featureCtx.name}…`
+              : "Ask about your codebase…"
+          }
+          className="chat-input"
           disabled={loading}
+          style={{ flex: 1 }}
         />
         <button
           type="submit"
           disabled={loading || !input.trim()}
-          className="px-3 py-2 bg-blue-600 rounded hover:bg-blue-500 disabled:opacity-50 transition-colors"
+          style={{
+            display:        "flex",
+            alignItems:     "center",
+            justifyContent: "center",
+            width:          38,
+            height:         38,
+            flexShrink:     0,
+            borderRadius:   "var(--radius-md)",
+            background:     loading || !input.trim()
+              ? "var(--surface-overlay)"
+              : "var(--accent-blue)",
+            border:         "none",
+            cursor:         loading || !input.trim() ? "not-allowed" : "pointer",
+            color:          loading || !input.trim()
+              ? "var(--text-disabled)"
+              : "#fff",
+            transition:     "background var(--duration-fast), color var(--duration-fast)",
+          }}
         >
-          <Send size={16} />
+          <Send size={15} />
         </button>
       </form>
+
+      {/* Bounce animation for thinking dots */}
+      <style>{`
+        @keyframes bounce {
+          0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
+          40%            { transform: translateY(-4px); opacity: 1; }
+        }
+      `}</style>
     </div>
   );
 }
