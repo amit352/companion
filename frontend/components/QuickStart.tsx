@@ -1,6 +1,8 @@
 "use client";
-import { useState } from "react";
-import { Check, Copy, Terminal, ChevronDown, ChevronUp } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Check, Copy, Terminal, ChevronDown, ChevronUp, Webhook } from "lucide-react";
+
+const API = "http://localhost:8000";
 
 interface Props {
   onManualIngest?: () => void;
@@ -11,6 +13,17 @@ export function QuickStart({ onManualIngest }: Props) {
   const [showAlt, setShowAlt]     = useState(false);
   const [repoPath, setRepoPath]   = useState("");
   const [status, setStatus]       = useState<"idle" | "running" | "done" | "error">("idle");
+  const [webhook, setWebhook]     = useState<{ registered: number; active: boolean } | null>(null);
+
+  useEffect(() => {
+    fetch(`${API}/api/v1/webhooks/github/status`)
+      .then((r) => r.json())
+      .then((d) => setWebhook({
+        registered: d.registered_repos?.length ?? 0,
+        active: d.signature_verification,
+      }))
+      .catch(() => {});
+  }, []);
 
   const CMD = "/companion <repo-path>";
 
@@ -56,6 +69,20 @@ export function QuickStart({ onManualIngest }: Props) {
           </div>
         </div>
       </div>
+
+      {/* Webhook status badge */}
+      {webhook !== null && (
+        <div className={`flex items-center gap-1.5 text-xs px-2 py-1 rounded ${
+          webhook.registered > 0
+            ? "bg-green-900/40 text-green-400 border border-green-800"
+            : "bg-gray-800 text-gray-500 border border-gray-700"
+        }`}>
+          <Webhook size={11} />
+          {webhook.registered > 0
+            ? `${webhook.registered} repo${webhook.registered > 1 ? "s" : ""} auto-sync`
+            : "Webhook not configured"}
+        </div>
+      )}
 
       {/* Secondary: standalone pipeline (collapsed) */}
       <button
