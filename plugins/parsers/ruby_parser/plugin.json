@@ -1,0 +1,9 @@
+{
+  "name": "ruby-parser",
+  "version": "1.0.0",
+  "plugin_type": "parser",
+  "languages": ["ruby"],
+  "entrypoint": "./plugin.py",
+  "description": "Tree-sitter Ruby parser — extracts classes, methods, modules, requires",
+  "permissions": ["read:source"]
+}

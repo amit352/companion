@@ -77,8 +77,14 @@ class Neo4jClient:
         log.info("neo4j_schema_ensured")
 
     async def upsert_node(self, node: _NODE_UNION) -> None:
+        import json
         label = node.neo4j_label
-        props = node.model_dump(exclude={"neo4j_label"})
+        raw   = node.model_dump(exclude={"neo4j_label"})
+        # Neo4j only stores primitives/lists — serialize nested dicts to JSON strings
+        props = {
+            k: json.dumps(v) if isinstance(v, dict) else v
+            for k, v in raw.items()
+        }
         cypher = (
             f"MERGE (n:{label} {{id: $id}}) "
             "SET n += $props"

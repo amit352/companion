@@ -1,0 +1,9 @@
+{
+  "name": "java-parser",
+  "version": "1.0.0",
+  "plugin_type": "parser",
+  "languages": ["java"],
+  "entrypoint": "./plugin.py",
+  "description": "Tree-sitter Java parser — extracts classes, interfaces, methods, imports",
+  "permissions": ["read:source"]
+}
