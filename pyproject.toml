@@ -41,7 +41,7 @@ dev = [
 fg = "feature_graph.cli:cli"
 
 [tool.hatch.build.targets.wheel]
-packages = ["feature_graph"]
+packages = ["src/feature_graph"]
 
 [tool.ruff]
 line-length = 100
