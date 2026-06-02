@@ -10,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from companion.api.auth import get_api_key
 from companion.api.telemetry import setup_telemetry
 from companion.api.routes import (
-    analysis, benchmark, chat, chat_feedback, docs, features, feedback,
+    analysis, benchmark, chat, chat_feedback, context, docs, features, feedback,
     graph, ingest, plugins, runtime, search, tour, webhooks,
 )
 from companion.core.engine.core_engine import CoreEngine
@@ -82,6 +82,7 @@ app.include_router(search.router,        prefix="/api/v1/search",    tags=["sear
 app.include_router(tour.router,          prefix="/api/v1/tour",      tags=["tour"],           dependencies=[_auth])
 app.include_router(benchmark.router,     prefix="/api/v1/benchmark", tags=["benchmark"],      dependencies=[_auth])
 app.include_router(runtime.router,       prefix="/api/v1/runtime",   tags=["runtime"],        dependencies=[_auth])
+app.include_router(context.router,       prefix="/api/v1/context",   tags=["context"],        dependencies=[_auth])
 # Webhooks use their own HMAC signature — not protected by API key
 app.include_router(webhooks.router,      prefix="/api/v1/webhooks",  tags=["webhooks"])
 

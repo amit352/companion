@@ -354,6 +354,11 @@ export default function FeatureExplorer({ onFeatureSelect }: Props) {
             setSelectedId(null);
             onFeatureSelect(null);
           }}
+          onNodeFocus={(id) => {
+            // Clicking a dependency/dependent in panel selects it in the graph
+            setSelectedId(id);
+            onFeatureSelect(id);
+          }}
         />
       )}
 

@@ -1,6 +1,11 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Companion is a persistent knowledge graph. At session start, load the graph:
+```bash
+curl -s http://localhost:8000/api/v1/context/session
+```
+Use this context instead of reading raw source files — it costs ~500 tokens vs 50K+.
+After significant edits, update: `POST /api/v1/context/after-edit`
 
 ## Commands
 
