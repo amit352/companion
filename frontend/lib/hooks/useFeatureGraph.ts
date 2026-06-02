@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useMemo } from "react";
 import { api } from "../api";
 
 export function useFeatureGraph() {
@@ -9,15 +10,16 @@ export function useFeatureGraph() {
         api.get("/api/v1/features/"),
         api.get("/api/v1/graph/overview"),
       ]);
-      return { features: featRes.data.features, overview: overviewRes.data };
+      return { features: featRes.data.features as any[], overview: overviewRes.data };
     },
     refetchInterval: 30_000,
   });
 
-  return {
-    features: data?.features ?? [],
-    relationships: (data?.features ?? []).flatMap((f: any) => f.relationships ?? []),
-    overview: data?.overview,
-    isLoading,
-  };
+  const features = useMemo(() => data?.features ?? [], [data?.features]);
+  const relationships = useMemo(
+    () => features.flatMap((f) => f.relationships ?? []),
+    [features]
+  );
+
+  return { features, relationships, overview: data?.overview, isLoading };
 }

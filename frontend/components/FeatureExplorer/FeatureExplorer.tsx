@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import ReactFlow, {
   Background,
   Controls,
@@ -21,6 +21,10 @@ const LAYER_COLORS: Record<string, string> = {
   utility: "#6b7280",
 };
 
+// Defined outside component so the reference is stable — fixes the key warning
+// from ReactFlow's NodeRenderer when nodeTypes changes on every render.
+const NODE_TYPES = {};
+
 interface Props {
   onFeatureSelect: (id: string | null) => void;
 }
@@ -31,16 +35,25 @@ export default function FeatureExplorer({ onFeatureSelect }: Props) {
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!features.length) return;
+  // Stable position seed per feature id — no Math.random() on re-render
+  const positionMap = useMemo(() => {
+    const map = new Map<string, { x: number; y: number }>();
+    features.forEach((f, i) => {
+      if (!map.has(f.id)) {
+        map.set(f.id, {
+          x: (i % 8) * 200,
+          y: Math.floor(i / 8) * 130,
+        });
+      }
+    });
+    return map;
+  }, [features]);
 
-    const flowNodes: Node[] = features.map((f, i) => ({
+  useEffect(() => {
+    const flowNodes: Node[] = features.map((f) => ({
       id: f.id,
       data: { label: f.name, feature: f },
-      position: {
-        x: (i % 8) * 180 + Math.random() * 40,
-        y: Math.floor(i / 8) * 120 + Math.random() * 20,
-      },
+      position: positionMap.get(f.id) ?? { x: 0, y: 0 },
       style: {
         background: LAYER_COLORS[f.layer ?? "utility"],
         color: "#fff",
@@ -62,7 +75,7 @@ export default function FeatureExplorer({ onFeatureSelect }: Props) {
 
     setNodes(flowNodes);
     setEdges(flowEdges);
-  }, [features, relationships]);
+  }, [features, relationships, positionMap]);
 
   const handleNodeClick = useCallback(
     (_: unknown, node: Node) => {
@@ -86,6 +99,7 @@ export default function FeatureExplorer({ onFeatureSelect }: Props) {
         <ReactFlow
           nodes={nodes}
           edges={edges}
+          nodeTypes={NODE_TYPES}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onNodeClick={handleNodeClick}
