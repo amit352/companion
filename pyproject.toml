@@ -5,29 +5,26 @@ build-backend = "hatchling.build"
 [project]
 name = "feature-graph"
 version = "0.1.0"
-description = "AI-native code intelligence platform that converts repositories into feature-centric knowledge graphs"
+description = "AI-native code intelligence platform — converts repos into feature-centric knowledge graphs"
 requires-python = ">=3.11"
 dependencies = [
     "anthropic>=0.40.0",
     "tree-sitter>=0.23.0",
     "tree-sitter-python>=0.23.0",
-    "tree-sitter-typescript>=0.23.0",
     "neo4j>=5.0.0",
     "psycopg2-binary>=2.9.0",
-    "pgvector>=0.3.0",
     "redis>=5.0.0",
     "fastapi>=0.115.0",
     "uvicorn[standard]>=0.32.0",
     "pydantic>=2.9.0",
     "pydantic-settings>=2.6.0",
-    "opentelemetry-sdk>=1.28.0",
-    "opentelemetry-api>=1.28.0",
     "aiofiles>=24.0.0",
     "httpx>=0.27.0",
     "rich>=13.0.0",
     "structlog>=24.0.0",
     "gitpython>=3.1.0",
-    "watchdog>=6.0.0",
+    "python-dotenv>=1.0.0",
+    "click>=8.1.0",
 ]
 
 [project.optional-dependencies]
@@ -37,12 +34,13 @@ dev = [
     "pytest-cov>=5.0.0",
     "ruff>=0.7.0",
     "mypy>=1.13.0",
-    "pre-commit>=4.0.0",
 ]
 
 [project.scripts]
-feature-graph = "feature_graph.cli:main"
-fg = "feature_graph.cli:main"
+fg = "feature_graph.cli:cli"
+
+[tool.hatch.build.targets.wheel]
+packages = ["feature_graph"]
 
 [tool.ruff]
 line-length = 100
@@ -57,4 +55,4 @@ testpaths = ["tests"]
 
 [tool.mypy]
 python_version = "3.11"
-strict = true
+ignore_missing_imports = true

@@ -32,7 +32,7 @@ class EventBus:
 
     def subscribe(self, event_type: EventType, handler: Handler) -> None:
         self._handlers[event_type].append(handler)
-        log.debug("event_subscribed", event=event_type, handler=handler.__qualname__)
+        log.debug("event_subscribed", event_type=event_type, handler=handler.__qualname__)
 
     def unsubscribe(self, event_type: EventType, handler: Handler) -> None:
         self._handlers[event_type].remove(handler)

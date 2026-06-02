@@ -5,7 +5,6 @@ import structlog
 from feature_graph.core.engine.event_bus import EventBus, EventType
 from feature_graph.core.engine.job_scheduler import JobScheduler
 from feature_graph.core.engine.plugin_manager import PluginManager
-from feature_graph.core.indexer.repository_indexer import RepositoryIndexer
 from feature_graph.graph.neo4j_client import Neo4jClient
 from feature_graph.sdk.registry import PluginRegistry
 
@@ -32,7 +31,6 @@ class CoreEngine:
             registry=self.registry,
         )
         self.neo4j = neo4j_client
-        self._indexer: RepositoryIndexer | None = None
 
     async def start(self) -> None:
         log.info("core_engine_starting")

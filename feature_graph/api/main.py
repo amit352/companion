@@ -10,21 +10,23 @@ from feature_graph.api.routes import analysis, features, graph, plugins, chat
 from feature_graph.core.engine.core_engine import CoreEngine
 from feature_graph.graph.neo4j_client import Neo4jClient
 
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+
 
 @contextlib.asynccontextmanager
 async def lifespan(app: FastAPI):
     neo4j = Neo4jClient(
-        uri=os.environ["NEO4J_URI"],
-        user=os.environ["NEO4J_USER"],
-        password=os.environ["NEO4J_PASSWORD"],
+        uri=os.environ.get("NEO4J_URI", "bolt://localhost:7687"),
+        user=os.environ.get("NEO4J_USER", "neo4j"),
+        password=os.environ.get("NEO4J_PASSWORD", "feature-graph-dev"),
     )
     engine = CoreEngine(
         neo4j_client=neo4j,
         plugin_dirs=[
-            Path("packages/plugins/parsers"),
-            Path("packages/plugins/extractors"),
-            Path("packages/compression"),
-            Path("plugins"),  # user-installed plugins
+            _REPO_ROOT / "plugins" / "parsers",
+            _REPO_ROOT / "plugins" / "extractors",
+            _REPO_ROOT / "plugins" / "compression",
+            _REPO_ROOT / "plugins",
         ],
     )
     await engine.start()
