@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   ReactFlow,
   Background,
@@ -8,28 +8,26 @@ import {
   Node,
   useEdgesState,
   useNodesState,
+  Panel,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { useFeatureGraph } from "@/lib/hooks/useFeatureGraph";
+import { applyDagreLayout } from "@/lib/layout";
 import { FeatureDetailPanel } from "./FeatureDetailPanel";
 
 const DOMAIN_COLORS: Record<string, string> = {
-  // layer names
-  api: "#3b82f6",
-  service: "#8b5cf6",
-  data: "#10b981",
-  ui: "#f59e0b",
-  utility: "#6b7280",
-  // domain names from extractors
-  auth: "#8b5cf6",
-  billing: "#10b981",
+  api:      "#3b82f6",
+  service:  "#8b5cf6",
+  data:     "#10b981",
+  ui:       "#f59e0b",
+  utility:  "#6b7280",
+  auth:     "#8b5cf6",
+  billing:  "#10b981",
   workflow: "#f59e0b",
-  infra: "#6b7280",
-  unknown: "#374151",
+  infra:    "#6b7280",
+  unknown:  "#374151",
 };
 
-// Defined outside component so the reference is stable — fixes the key warning
-// from ReactFlow's NodeRenderer when nodeTypes changes on every render.
 const NODE_TYPES = {};
 
 interface Props {
@@ -41,52 +39,42 @@ export default function FeatureExplorer({ onFeatureSelect }: Props) {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-
-  // Stable position seed per feature id — no Math.random() on re-render
-  const positionMap = useMemo(() => {
-    const map = new Map<string, { x: number; y: number }>();
-    features.forEach((f, i) => {
-      if (!map.has(f.id)) {
-        map.set(f.id, {
-          x: (i % 8) * 200,
-          y: Math.floor(i / 8) * 130,
-        });
-      }
-    });
-    return map;
-  }, [features]);
+  const [direction, setDirection] = useState<"LR" | "TB">("LR");
 
   useEffect(() => {
-    const flowNodes: Node[] = features.map((f) => ({
+    if (!features.length) return;
+
+    const rawNodes: Node[] = features.map((f) => ({
       id: f.id,
       data: { label: f.name, feature: f },
-      position: positionMap.get(f.id) ?? { x: 0, y: 0 },
+      position: { x: 0, y: 0 },
       style: {
         background: DOMAIN_COLORS[f.layer ?? f.domain ?? "unknown"],
         color: "#fff",
-        border: "1px solid rgba(255,255,255,0.2)",
+        border: "1px solid rgba(255,255,255,0.15)",
         borderRadius: 8,
         fontSize: 12,
         padding: "6px 12px",
+        width: 180,
+        textAlign: "center" as const,
       },
     }));
 
-    const flowEdges: Edge[] = relationships
+    const rawEdges: Edge[] = relationships
       .filter((r) => r.source_id && r.target_id)
       .map((r) => ({
         id: `${r.source_id}-${r.target_id}`,
         source: r.source_id,
         target: r.target_id,
-        label: r.kind?.toLowerCase().replace(/_/g, " "),
-        style: { stroke: "#6b7280", strokeWidth: 1.5 },
-        labelStyle: { fill: "#9ca3af", fontSize: 10 },
+        style: { stroke: "#4b5563", strokeWidth: 1.5 },
         animated: r.kind?.toUpperCase() === "DEPENDS_ON",
         markerEnd: { type: "arrowclosed" as any, color: "#6b7280" },
       }));
 
-    setNodes(flowNodes);
-    setEdges(flowEdges);
-  }, [features, relationships, positionMap]);
+    const { nodes: laid, edges: laidEdges } = applyDagreLayout(rawNodes, rawEdges, direction);
+    setNodes(laid);
+    setEdges(laidEdges);
+  }, [features, relationships, direction]);
 
   const handleNodeClick = useCallback(
     (_: unknown, node: Node) => {
@@ -98,8 +86,17 @@ export default function FeatureExplorer({ onFeatureSelect }: Props) {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-full text-gray-400">
+      <div className="flex items-center justify-center h-full text-gray-400 text-sm">
         Loading feature graph...
+      </div>
+    );
+  }
+
+  if (!features.length) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full gap-3 text-gray-500 text-sm">
+        <p>No features in graph yet.</p>
+        <p className="text-xs">Run <code className="bg-gray-800 px-1 py-0.5 rounded">/fg-analyze &lt;repo-path&gt;</code> to populate.</p>
       </div>
     );
   }
@@ -115,9 +112,30 @@ export default function FeatureExplorer({ onFeatureSelect }: Props) {
           onEdgesChange={onEdgesChange}
           onNodeClick={handleNodeClick}
           fitView
+          fitViewOptions={{ padding: 0.15 }}
         >
           <Background color="#1f2937" gap={24} />
           <Controls />
+          <Panel position="top-right">
+            <div className="flex gap-1 bg-gray-900 border border-gray-700 rounded p-1">
+              <button
+                onClick={() => setDirection("LR")}
+                className={`px-2 py-1 rounded text-xs transition-colors ${
+                  direction === "LR" ? "bg-blue-600 text-white" : "text-gray-400 hover:text-gray-200"
+                }`}
+              >
+                Left → Right
+              </button>
+              <button
+                onClick={() => setDirection("TB")}
+                className={`px-2 py-1 rounded text-xs transition-colors ${
+                  direction === "TB" ? "bg-blue-600 text-white" : "text-gray-400 hover:text-gray-200"
+                }`}
+              >
+                Top → Bottom
+              </button>
+            </div>
+          </Panel>
         </ReactFlow>
       </div>
 

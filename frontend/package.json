@@ -10,6 +10,7 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
+    "@dagrejs/dagre": "^3.0.0",
     "@tanstack/react-query": "^5.0.0",
     "@xyflow/react": "^12.11.0",
     "axios": "^1.6.0",
