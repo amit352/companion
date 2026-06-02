@@ -13,6 +13,27 @@ log = structlog.get_logger()
 _NODE_UNION = Feature | Service | API | DatabaseTable | UIComponent | Requirement
 
 
+def _serialize(value: Any) -> Any:
+    """Recursively convert Neo4j Node/Relationship objects to plain dicts."""
+    if hasattr(value, "items"):
+        return {k: _serialize(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_serialize(v) for v in value]
+    return value
+
+
+def _flatten_record(record: dict[str, Any]) -> dict[str, Any]:
+    """
+    Neo4j RETURN f gives {"f": Node{...}}.
+    If the record has exactly one key whose value is a Node, unwrap it.
+    Otherwise serialize all values in place.
+    """
+    values = list(record.values())
+    if len(values) == 1 and hasattr(values[0], "items"):
+        return _serialize(values[0])
+    return {k: _serialize(v) for k, v in record.items()}
+
+
 class Neo4jClient:
     """Thin async wrapper around Neo4j driver for graph persistence."""
 
@@ -82,7 +103,8 @@ class Neo4jClient:
     async def query(self, cypher: str, **params: Any) -> list[dict[str, Any]]:
         async with self.driver.session() as session:
             result = await session.run(cypher, **params)
-            return [dict(record) async for record in result]
+            rows = [dict(record) async for record in result]
+            return [_flatten_record(row) for row in rows]
 
     async def get_feature_subgraph(self, feature_id: str, depth: int = 2) -> dict[str, Any]:
         """Return a feature and all connected nodes up to `depth` hops."""

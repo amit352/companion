@@ -1,8 +1,15 @@
 "use client";
 import { useState } from "react";
-import FeatureExplorer from "@/components/FeatureExplorer/FeatureExplorer";
+import dynamic from "next/dynamic";
 import AIChatInterface from "@/components/AIChatInterface/AIChatInterface";
 import { AnalysisLauncher } from "@/components/AnalysisLauncher";
+
+// @xyflow/react uses browser-only APIs (ResizeObserver, DOM transforms).
+// Rendering it server-side corrupts the store and triggers false key warnings.
+const FeatureExplorer = dynamic(
+  () => import("@/components/FeatureExplorer/FeatureExplorer"),
+  { ssr: false, loading: () => <div className="flex items-center justify-center h-full text-gray-500 text-sm">Loading graph...</div> }
+);
 
 type View = "explorer" | "chat";
 
