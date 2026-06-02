@@ -1,0 +1,9 @@
+{
+  "name": "auth-feature-detector",
+  "version": "1.0.0",
+  "plugin_type": "feature-extractor",
+  "languages": [],
+  "entrypoint": "./plugin.py",
+  "description": "Detects authentication and authorization features using Claude",
+  "permissions": ["read:symbols", "call:ai"]
+}

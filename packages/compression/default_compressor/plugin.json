@@ -1,0 +1,9 @@
+{
+  "name": "default-compressor",
+  "version": "1.0.0",
+  "plugin_type": "ai-compression",
+  "languages": [],
+  "entrypoint": "./plugin.py",
+  "description": "Default AI context compressor targeting 70% token reduction via Claude",
+  "permissions": ["read:graph", "call:ai"]
+}

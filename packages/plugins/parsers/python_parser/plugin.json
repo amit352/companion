@@ -1,0 +1,9 @@
+{
+  "name": "python-parser",
+  "version": "1.0.0",
+  "plugin_type": "parser",
+  "languages": ["python"],
+  "entrypoint": "./plugin.py",
+  "description": "Tree-sitter based Python parser — extracts AST, symbols, and imports",
+  "permissions": ["read:source"]
+}
