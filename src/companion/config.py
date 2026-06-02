@@ -20,6 +20,10 @@ class Settings(BaseSettings):
     # Anthropic
     anthropic_api_key: str = ""
 
+    # LLM backend: "direct" = call Anthropic API directly (needs API key)
+    #              "claude-code" = features ingested by /fg-analyze Claude Code skill (no key needed)
+    llm_backend: str = "direct"
+
     # Plugin discovery
     plugin_dirs: list[str] = ["plugins/parsers", "plugins/extractors", "plugins/compression", "plugins"]
 

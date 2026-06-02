@@ -1,12 +1,12 @@
 """
 Shared utilities for LLM-based feature extractor plugins.
-All extractors follow the same pattern:
-  1. Filter symbols by domain keywords (cheap, local)
-  2. Send filtered symbols to Claude with a domain-specific system prompt
-  3. Parse and validate the JSON response
-  4. Return FeatureExtractionOutput
+
+Two backends:
+  direct     — call Anthropic API with ANTHROPIC_API_KEY (standalone mode)
+  claude-code — skip; features are ingested via /fg-analyze Claude Code skill instead
 """
 import json
+import os
 from typing import Any
 
 import anthropic
@@ -63,6 +63,11 @@ def filter_deps(
 
 
 def call_claude(system: str, payload: dict[str, Any], model: str = "claude-haiku-4-5-20251001") -> dict[str, Any]:
+    if os.environ.get("LLM_BACKEND", "direct") == "claude-code":
+        # In claude-code mode extraction is handled by the /fg-analyze skill.
+        # The plugin pipeline still runs (for parsing) but LLM calls are no-ops.
+        return {"features": [], "relationships": [], "ownership": []}
+
     client = anthropic.Anthropic()
     try:
         response = client.messages.create(
