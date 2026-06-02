@@ -6,16 +6,32 @@ router = APIRouter()
 @router.get("/")
 async def list_features(
     request: Request,
-    domain: str | None = Query(None),
-    limit: int = Query(50, le=500),
+    domain:    str | None = Query(None),
+    repo_path: str | None = Query(None, description="Filter by repository path"),
+    limit:     int        = Query(200, le=500),
 ):
     engine = request.app.state.engine
-    cypher = "MATCH (f:Feature) RETURN f LIMIT $limit"
-    params = {"limit": limit}
-    if domain:
-        cypher = "MATCH (f:Feature {domain: $domain}) RETURN f LIMIT $limit"
-        params["domain"] = domain
-    records = await engine.neo4j.query(cypher, **params)
+    if repo_path:
+        cypher = """
+        MATCH (r:Repository {path: $repo})<-[:CONTAINS]-(f:Feature)
+        RETURN f LIMIT $limit
+        """
+        # Fallback: repo may not have CONTAINS edges yet — match by source_files prefix
+        records = await engine.neo4j.query(cypher, repo=repo_path, limit=limit)
+        if not records:
+            cypher = """
+            MATCH (f:Feature)
+            WHERE any(sf IN f.source_files WHERE sf STARTS WITH $prefix OR $prefix ENDS WITH '/')
+            RETURN f LIMIT $limit
+            """
+            records = await engine.neo4j.query(cypher, prefix=repo_path.rstrip("/"), limit=limit)
+    elif domain:
+        records = await engine.neo4j.query(
+            "MATCH (f:Feature {domain: $domain}) RETURN f LIMIT $limit",
+            domain=domain, limit=limit,
+        )
+    else:
+        records = await engine.neo4j.query("MATCH (f:Feature) RETURN f LIMIT $limit", limit=limit)
     return {"features": records}
 
 

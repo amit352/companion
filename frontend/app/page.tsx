@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import AIChatInterface from "@/components/AIChatInterface/AIChatInterface";
 import { QuickStart } from "@/components/QuickStart";
 import { DocViewer } from "@/components/DocViewer";
+import { ProjectSwitcher } from "@/components/ProjectSwitcher";
 import { FileText, Loader2, History } from "lucide-react";
 
 const FeatureExplorer = dynamic(
@@ -76,6 +77,8 @@ export default function Home() {
           <span className="text-lg font-bold text-blue-400">Companion</span>
           <span className="text-xs text-gray-500 mt-1">v0.1</span>
         </div>
+
+        <ProjectSwitcher />
 
         <nav className="flex flex-col gap-1">
           {(["explorer", "chat"] as View[]).map((v) => (

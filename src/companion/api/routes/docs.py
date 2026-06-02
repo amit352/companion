@@ -307,6 +307,68 @@ def _generate_adr(name: str, compressed: dict) -> str:
 
 # ── Main endpoint ─────────────────────────────────────────────────────────────
 
+@router.get("/sequence")
+async def sequence_diagram(request: Request, feature_id: str | None = None):
+    """
+    Generate a Mermaid sequence diagram from feature dependencies.
+    Shows the flow: who calls whom in the feature graph.
+    """
+    engine = request.app.state.engine
+
+    if feature_id:
+        # Diagram for one feature and its connections
+        rels = await engine.neo4j.query(
+            """
+            MATCH (a)-[r:DEPENDS_ON]->(b)
+            WHERE a.id = $id OR b.id = $id
+            RETURN a.name AS from, b.name AS to
+            LIMIT 20
+            """,
+            id=feature_id,
+        )
+        title = "Feature Flow"
+    else:
+        # Top-level flow across all features
+        rels = await engine.neo4j.query(
+            """
+            MATCH (a:Feature)-[r:DEPENDS_ON]->(b:Feature)
+            RETURN a.name AS from, b.name AS to
+            LIMIT 30
+            """
+        )
+        title = "System Flow"
+
+    def safe(name: str) -> str:
+        return name.replace("(", "").replace(")", "").replace(" ", "_").replace("-", "_")[:30]
+
+    lines = [
+        "```mermaid",
+        "sequenceDiagram",
+        f"    %% {title}",
+    ]
+
+    seen_parts: set[str] = set()
+    for r in rels:
+        src = r.get("from") or ""
+        tgt = r.get("to") or ""
+        if not src or not tgt:
+            continue
+        s, t = safe(src), safe(tgt)
+        # Declare participants once
+        for label, alias in [(src, s), (tgt, t)]:
+            if alias not in seen_parts:
+                lines.append(f"    participant {alias} as {label[:25]}")
+                seen_parts.add(alias)
+        lines.append(f"    {s}->>+{t}: depends on")
+
+    lines.append("```")
+
+    if len(seen_parts) < 2:
+        return PlainTextResponse("```mermaid\nsequenceDiagram\n    Note: No relationships found\n```")
+
+    return PlainTextResponse("\n".join(lines))
+
+
 @router.post("/generate")
 async def generate_doc(req: GenerateRequest, request: Request):
     engine = request.app.state.engine
