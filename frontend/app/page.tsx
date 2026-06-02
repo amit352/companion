@@ -2,7 +2,7 @@
 import { useState } from "react";
 import dynamic from "next/dynamic";
 import AIChatInterface from "@/components/AIChatInterface/AIChatInterface";
-import { AnalysisLauncher } from "@/components/AnalysisLauncher";
+import { QuickStart } from "@/components/QuickStart";
 import { DocViewer } from "@/components/DocViewer";
 import { FileText, Loader2 } from "lucide-react";
 
@@ -92,7 +92,7 @@ export default function Home() {
             </button>
           ))}
           <div className="border-t border-gray-800 pt-2">
-            <AnalysisLauncher />
+            <QuickStart />
           </div>
         </div>
       </aside>

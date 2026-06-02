@@ -1,6 +1,6 @@
 "use client";
 import { FormEvent, useRef, useState } from "react";
-import { Send } from "lucide-react";
+import { Send, ThumbsUp, ThumbsDown } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 
 const API = "http://localhost:8000";
@@ -9,6 +9,8 @@ interface Message {
   role: "user" | "assistant";
   content: string;
   source?: "graph" | "llm";
+  question?: string;   // store paired question for feedback
+  rated?: "up" | "down";
 }
 
 const SUGGESTIONS = [
@@ -28,14 +30,30 @@ export default function AIChatInterface({ featureId }: Props) {
   const [loading, setLoading] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  const append = (content: string, source?: "graph" | "llm") =>
+  const append = (content: string, source?: "graph" | "llm", question?: string) =>
     setMessages((m) => {
       const last = m[m.length - 1];
       if (last?.role === "assistant") {
-        return [...m.slice(0, -1), { ...last, content, source }];
+        return [...m.slice(0, -1), { ...last, content, source, question: question ?? last.question }];
       }
-      return [...m, { role: "assistant", content, source }];
+      return [...m, { role: "assistant", content, source, question }];
     });
+
+  async function rateFeedback(msg: Message, verdict: "up" | "down") {
+    setMessages((m) => m.map((x) =>
+      x === msg ? { ...x, rated: verdict } : x
+    ));
+    await fetch(`${API}/api/v1/chat/feedback`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        question: msg.question ?? "",
+        answer: msg.content,
+        source: msg.source ?? "graph",
+        verdict: verdict === "up" ? "correct" : "wrong",
+      }),
+    }).catch(() => {});
+  }
 
   const sendMessage = async (question: string) => {
     if (!question.trim() || loading) return;
@@ -43,7 +61,7 @@ export default function AIChatInterface({ featureId }: Props) {
     setMessages((m) => [
       ...m,
       { role: "user", content: question },
-      { role: "assistant", content: "" },
+      { role: "assistant", content: "", question },
     ]);
     setLoading(true);
 
@@ -57,9 +75,8 @@ export default function AIChatInterface({ featureId }: Props) {
       const contentType = res.headers.get("content-type") ?? "";
 
       if (contentType.includes("application/json")) {
-        // Graph-native structured answer
         const data = await res.json();
-        append(data.answer, "graph");
+        append(data.answer, "graph", question);
       } else {
         // LLM streaming answer
         const reader = res.body?.getReader();
@@ -118,15 +135,25 @@ export default function AIChatInterface({ featureId }: Props) {
                   ) : (
                     <span className="animate-pulse text-gray-500">Thinking…</span>
                   )}
-                  {msg.source && (
-                    <div className="mt-2 pt-2 border-t border-gray-700">
+                  {msg.source && msg.content && (
+                    <div className="mt-2 pt-2 border-t border-gray-700 flex items-center justify-between">
                       <span className={`text-xs px-1.5 py-0.5 rounded ${
-                        msg.source === "graph"
-                          ? "bg-green-900 text-green-300"
-                          : "bg-purple-900 text-purple-300"
+                        msg.source === "graph" ? "bg-green-900 text-green-300" : "bg-purple-900 text-purple-300"
                       }`}>
                         {msg.source === "graph" ? "⬡ from graph" : "✦ from AI"}
                       </span>
+                      <div className="flex gap-1">
+                        <button onClick={() => rateFeedback(msg, "up")}
+                          className={`p-1 rounded transition-colors ${msg.rated === "up" ? "text-green-400" : "text-gray-600 hover:text-gray-300"}`}
+                          title="Correct">
+                          <ThumbsUp size={12} />
+                        </button>
+                        <button onClick={() => rateFeedback(msg, "down")}
+                          className={`p-1 rounded transition-colors ${msg.rated === "down" ? "text-red-400" : "text-gray-600 hover:text-gray-300"}`}
+                          title="Wrong">
+                          <ThumbsDown size={12} />
+                        </button>
+                      </div>
                     </div>
                   )}
                 </>
