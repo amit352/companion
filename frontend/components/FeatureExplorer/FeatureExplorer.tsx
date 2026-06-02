@@ -13,12 +13,19 @@ import "@xyflow/react/dist/style.css";
 import { useFeatureGraph } from "@/lib/hooks/useFeatureGraph";
 import { FeatureDetailPanel } from "./FeatureDetailPanel";
 
-const LAYER_COLORS: Record<string, string> = {
+const DOMAIN_COLORS: Record<string, string> = {
+  // layer names
   api: "#3b82f6",
   service: "#8b5cf6",
   data: "#10b981",
   ui: "#f59e0b",
   utility: "#6b7280",
+  // domain names from extractors
+  auth: "#8b5cf6",
+  billing: "#10b981",
+  workflow: "#f59e0b",
+  infra: "#6b7280",
+  unknown: "#374151",
 };
 
 // Defined outside component so the reference is stable — fixes the key warning
@@ -55,7 +62,7 @@ export default function FeatureExplorer({ onFeatureSelect }: Props) {
       data: { label: f.name, feature: f },
       position: positionMap.get(f.id) ?? { x: 0, y: 0 },
       style: {
-        background: LAYER_COLORS[f.layer ?? "utility"],
+        background: DOMAIN_COLORS[f.layer ?? f.domain ?? "unknown"],
         color: "#fff",
         border: "1px solid rgba(255,255,255,0.2)",
         borderRadius: 8,

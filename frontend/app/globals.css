@@ -16,3 +16,25 @@ body {
 * {
   box-sizing: border-box;
 }
+
+/* ReactFlow dark mode overrides */
+.react-flow__controls {
+  background: #1f2937 !important;
+  border: 1px solid #374151 !important;
+  border-radius: 6px;
+}
+.react-flow__controls-button {
+  background: #1f2937 !important;
+  border-bottom: 1px solid #374151 !important;
+  fill: #9ca3af !important;
+}
+.react-flow__controls-button:hover {
+  background: #374151 !important;
+}
+.react-flow__edge-path {
+  stroke: #4b5563;
+}
+.react-flow__edge-text {
+  fill: #9ca3af;
+  font-size: 11px;
+}
