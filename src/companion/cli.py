@@ -10,7 +10,7 @@ console = Console()
 
 @click.group()
 def cli():
-    """FeatureGraph — AI-native code intelligence platform."""
+    """Companion — AI-native code intelligence platform."""
 
 
 @cli.command()
@@ -91,7 +91,7 @@ def ask(question: str, host: str, port: int):
 
 @cli.command()
 def serve():
-    """Start the FeatureGraph API server."""
+    """Start the Companion API server."""
     import uvicorn
     uvicorn.run(
         "companion.api.main:app",

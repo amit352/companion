@@ -6,7 +6,7 @@ import { Providers } from "./providers";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "FeatureGraph — Code Intelligence Platform",
+  title: "Companion — Code Intelligence Platform",
   description: "AI-native feature-centric knowledge graph for software repositories",
 };
 

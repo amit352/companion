@@ -14,7 +14,7 @@ class IntegrationCapability(BaseModel):
 
 
 class IntegrationPlugin(PluginBase):
-    """Plugin type 4.6: Bridges FeatureGraph with external systems (GitHub, Jira, Neo4j, etc.)."""
+    """Plugin type 4.6: Bridges Companion with external systems (GitHub, Jira, Neo4j, etc.)."""
 
     @abstractmethod
     def capabilities(self) -> IntegrationCapability:

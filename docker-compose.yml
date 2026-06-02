@@ -5,7 +5,7 @@ services:
       - "7474:7474"
       - "7687:7687"
     environment:
-      NEO4J_AUTH: neo4j/feature-graph-dev
+      NEO4J_AUTH: neo4j/companion-dev
       NEO4J_server_memory_heap_initial__size: 256m
       NEO4J_server_memory_heap_max__size: 512m
     volumes:
@@ -21,14 +21,14 @@ services:
     ports:
       - "5433:5432"
     environment:
-      POSTGRES_USER: featuregraph
-      POSTGRES_PASSWORD: featuregraph-dev
-      POSTGRES_DB: featuregraph
+      POSTGRES_USER: companion
+      POSTGRES_PASSWORD: companion-dev
+      POSTGRES_DB: companion
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./infra/sql/init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U featuregraph"]
+      test: ["CMD-SHELL", "pg_isready -U companion"]
       interval: 5s
       timeout: 3s
       retries: 10
@@ -49,8 +49,8 @@ services:
     environment:
       NEO4J_URI: bolt://neo4j:7687
       NEO4J_USER: neo4j
-      NEO4J_PASSWORD: feature-graph-dev
-      POSTGRES_DSN: postgresql://featuregraph:featuregraph-dev@postgres:5432/featuregraph
+      NEO4J_PASSWORD: companion-dev
+      POSTGRES_DSN: postgresql://companion:companion-dev@postgres:5432/companion
       REDIS_URL: redis://redis:6379
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
     depends_on:

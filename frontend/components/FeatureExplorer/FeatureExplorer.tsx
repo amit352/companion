@@ -12,7 +12,7 @@ import {
   NodeTypes,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { useFeatureGraph } from "@/lib/hooks/useFeatureGraph";
+import { useCompanion } from "@/lib/hooks/useCompanion";
 import { applyDagreLayout } from "@/lib/layout";
 import { buildGroupedLayout, DOMAIN_COLORS } from "@/lib/groupLayout";
 import { buildArchitectureLayout } from "@/lib/architectureLayout";
@@ -33,7 +33,7 @@ interface Props {
 }
 
 export default function FeatureExplorer({ onFeatureSelect }: Props) {
-  const { features, relationships, isLoading } = useFeatureGraph();
+  const { features, relationships, isLoading } = useCompanion();
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);

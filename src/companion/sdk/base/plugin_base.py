@@ -33,7 +33,7 @@ class PluginContext(BaseModel):
 
 
 class PluginBase(ABC):
-    """Abstract base for all FeatureGraph plugins."""
+    """Abstract base for all Companion plugins."""
 
     def __init__(self, manifest: PluginManifest) -> None:
         self.manifest = manifest

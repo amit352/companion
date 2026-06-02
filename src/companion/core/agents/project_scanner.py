@@ -25,7 +25,7 @@ _IGNORE_DIRS = {
     "dist", "build", ".next", "coverage", ".pytest_cache",
 }
 
-_STATE_FILE = ".feature-graph/scan-state.json"
+_STATE_FILE = ".companion/scan-state.json"
 
 
 class ProjectScanner:

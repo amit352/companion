@@ -9,10 +9,10 @@ class Settings(BaseSettings):
     # Neo4j
     neo4j_uri: str = "bolt://localhost:7687"
     neo4j_user: str = "neo4j"
-    neo4j_password: str = "feature-graph-dev"
+    neo4j_password: str = "companion-dev"
 
     # Postgres
-    postgres_dsn: str = "postgresql://featuregraph:featuregraph-dev@localhost:5432/featuregraph"
+    postgres_dsn: str = "postgresql://companion:companion-dev@localhost:5432/companion"
 
     # Redis
     redis_url: str = "redis://localhost:6379"

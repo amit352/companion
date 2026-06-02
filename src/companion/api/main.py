@@ -1,4 +1,4 @@
-"""FeatureGraph REST API — FastAPI application entry point."""
+"""Companion REST API — FastAPI application entry point."""
 import contextlib
 import os
 from pathlib import Path
@@ -18,7 +18,7 @@ async def lifespan(app: FastAPI):
     neo4j = Neo4jClient(
         uri=os.environ.get("NEO4J_URI", "bolt://localhost:7687"),
         user=os.environ.get("NEO4J_USER", "neo4j"),
-        password=os.environ.get("NEO4J_PASSWORD", "feature-graph-dev"),
+        password=os.environ.get("NEO4J_PASSWORD", "companion-dev"),
     )
     engine = CoreEngine(
         neo4j_client=neo4j,
@@ -35,7 +35,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="FeatureGraph API",
+    title="Companion API",
     description="AI-native code intelligence platform",
     version="0.1.0",
     lifespan=lifespan,

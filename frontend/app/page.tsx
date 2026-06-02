@@ -22,7 +22,7 @@ export default function Home() {
       {/* Sidebar */}
       <aside className="w-64 border-r border-gray-800 flex flex-col p-4 gap-4">
         <div className="flex items-center gap-2 py-2">
-          <span className="text-lg font-bold text-blue-400">FeatureGraph</span>
+          <span className="text-lg font-bold text-blue-400">Companion</span>
           <span className="text-xs text-gray-500 mt-1">v0.1</span>
         </div>
 

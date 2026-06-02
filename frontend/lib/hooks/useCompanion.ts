@@ -2,9 +2,9 @@ import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { api } from "../api";
 
-export function useFeatureGraph() {
+export function useCompanion() {
   const { data, isLoading } = useQuery({
-    queryKey: ["feature-graph"],
+    queryKey: ["companion"],
     queryFn: async () => {
       const [featRes, relsRes, overviewRes] = await Promise.all([
         api.get("/api/v1/features/"),

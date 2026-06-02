@@ -1,6 +1,6 @@
 """
 Six-agent analysis pipeline — inspired by Understand-Anything's agent design,
-adapted to FeatureGraph's plugin-driven architecture.
+adapted to Companion's plugin-driven architecture.
 
 Agents run in this order:
   1. project_scanner    — discover files, detect languages
