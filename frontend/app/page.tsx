@@ -39,10 +39,11 @@ export default function Home() {
   async function openDoc(type: DocType) {
     setDocLoading(type);
     try {
+      // Fetch as markdown for the viewer
       const res = await fetch("http://localhost:8000/api/v1/docs/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ doc_type: type, repo_name: "SCiCustomer" }),
+        body: JSON.stringify({ doc_type: type, format: "markdown", repo_name: "SCiCustomer" }),
       });
       const text = await res.text();
       setDocContent(text);
@@ -52,12 +53,18 @@ export default function Home() {
     }
   }
 
-  function downloadDoc() {
-    if (!docContent || !docType) return;
-    const blob = new Blob([docContent], { type: "text/markdown" });
+  async function downloadDoc(format: "markdown" | "pdf" | "html" | "json" = "markdown") {
+    if (!docType) return;
+    const res = await fetch("http://localhost:8000/api/v1/docs/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ doc_type: docType, format, repo_name: "SCiCustomer" }),
+    });
+    const blob = await res.blob();
+    const ext  = { markdown: "md", pdf: "pdf", html: "html", json: "json" }[format];
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement("a");
-    a.href = url; a.download = `${docType}.md`; a.click();
+    a.href = url; a.download = `${docType}.${ext}`; a.click();
     URL.revokeObjectURL(url);
   }
 

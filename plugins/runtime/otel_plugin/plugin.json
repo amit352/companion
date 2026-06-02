@@ -1,0 +1,9 @@
+{
+  "name": "otel-runtime-analyzer",
+  "version": "1.0.0",
+  "plugin_type": "runtime-analysis",
+  "languages": [],
+  "entrypoint": "./plugin.py",
+  "description": "Maps OpenTelemetry traces to feature graph nodes — discovers runtime service dependencies",
+  "permissions": ["read:graph", "write:graph"]
+}

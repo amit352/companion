@@ -1,17 +1,25 @@
 "use client";
 import { useEffect, useRef } from "react";
 import ReactMarkdown from "react-markdown";
-import { X, Download } from "lucide-react";
+import { X, Download, ChevronDown } from "lucide-react";
+import { useState } from "react";
+
+type ExportFmt = "markdown" | "pdf" | "html" | "json";
 
 interface Props {
   title: string;
   content: string;
   onClose: () => void;
-  onDownload: () => void;
+  onDownload: (format: ExportFmt) => void;
 }
+
+const FMT_LABELS: Record<ExportFmt, string> = {
+  markdown: ".md", pdf: ".pdf", html: ".html", json: ".json",
+};
 
 export function DocViewer({ title, content, onClose, onDownload }: Props) {
   const ref = useRef<HTMLDivElement>(null);
+  const [showFmts, setShowFmts] = useState(false);
 
   // Close on Escape
   useEffect(() => {
@@ -45,13 +53,36 @@ export function DocViewer({ title, content, onClose, onDownload }: Props) {
         <div className="flex items-center justify-between px-6 py-3 border-b border-gray-800 flex-shrink-0">
           <span className="text-sm font-semibold text-gray-200">{title}</span>
           <div className="flex items-center gap-2">
-            <button
-              onClick={onDownload}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs rounded-md transition-colors"
-            >
-              <Download size={13} />
-              Download .md
-            </button>
+            {/* Download with format picker */}
+            <div className="relative">
+              <div className="flex">
+                <button
+                  onClick={() => onDownload("markdown")}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs rounded-l-md transition-colors"
+                >
+                  <Download size={13} /> Download
+                </button>
+                <button
+                  onClick={() => setShowFmts(!showFmts)}
+                  className="px-2 py-1.5 bg-blue-700 hover:bg-blue-600 text-white text-xs rounded-r-md border-l border-blue-500 transition-colors"
+                >
+                  <ChevronDown size={12} />
+                </button>
+              </div>
+              {showFmts && (
+                <div className="absolute right-0 top-full mt-1 bg-gray-900 border border-gray-700 rounded-lg shadow-xl overflow-hidden z-10 w-32">
+                  {(Object.keys(FMT_LABELS) as ExportFmt[]).map((fmt) => (
+                    <button
+                      key={fmt}
+                      onClick={() => { onDownload(fmt); setShowFmts(false); }}
+                      className="w-full px-3 py-2 text-left text-xs text-gray-300 hover:bg-gray-800 transition-colors"
+                    >
+                      {FMT_LABELS[fmt]}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
             <button
               onClick={onClose}
               className="p-1.5 text-gray-500 hover:text-gray-200 rounded hover:bg-gray-800 transition-colors"
