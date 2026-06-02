@@ -1,8 +1,9 @@
-Alias for /companion — analyzes a repository and populates the Companion knowledge graph.
+Analyze a code repository and populate the Companion knowledge graph.
 
-Usage: /fg-analyze <repo-path> [--api-url http://localhost:8000]
+Usage: /companion <repo-path> [--api-url http://localhost:8000]
 
-This command is identical to /companion. Both are supported.
+Runs entirely inside the Claude Code session — no ANTHROPIC_API_KEY required.
+Uses Claude Code agents to extract features, then posts to the Companion API.
 
 ---
 
@@ -16,7 +17,7 @@ Set REPO_PATH and API_URL, then execute the following steps.
 
 ## Step 1 — Scan
 
-Use Bash to discover source files in REPO_PATH:
+Use Bash to count and list source files in REPO_PATH:
 
 ```bash
 find "$REPO_PATH" \
