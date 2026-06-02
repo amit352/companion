@@ -3,34 +3,54 @@ import { useState } from "react";
 import dynamic from "next/dynamic";
 import AIChatInterface from "@/components/AIChatInterface/AIChatInterface";
 import { AnalysisLauncher } from "@/components/AnalysisLauncher";
-import { FileText } from "lucide-react";
+import { DocViewer } from "@/components/DocViewer";
+import { FileText, Loader2 } from "lucide-react";
 
-// @xyflow/react uses browser-only APIs (ResizeObserver, DOM transforms).
-// Rendering it server-side corrupts the store and triggers false key warnings.
 const FeatureExplorer = dynamic(
   () => import("@/components/FeatureExplorer/FeatureExplorer"),
   { ssr: false, loading: () => <div className="flex items-center justify-center h-full text-gray-500 text-sm">Loading graph...</div> }
 );
 
 type View = "explorer" | "chat";
+type DocType = "srs" | "readme" | "adr";
 
-async function downloadDoc(type: "srs" | "readme" | "adr") {
-  const res = await fetch("http://localhost:8000/api/v1/docs/generate", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ doc_type: type, repo_name: "SCiCustomer" }),
-  });
-  const text = await res.text();
-  const blob = new Blob([text], { type: "text/markdown" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url; a.download = `${type}.md`; a.click();
-  URL.revokeObjectURL(url);
-}
+const DOC_LABELS: Record<DocType, string> = {
+  srs:    "Software Requirements Spec",
+  readme: "README",
+  adr:    "Architecture Decision Record",
+};
 
 export default function Home() {
-  const [view, setView] = useState<View>("explorer");
+  const [view, setView]                   = useState<View>("explorer");
   const [selectedFeatureId, setSelectedFeatureId] = useState<string | null>(null);
+  const [docContent, setDocContent]       = useState<string | null>(null);
+  const [docType, setDocType]             = useState<DocType | null>(null);
+  const [docLoading, setDocLoading]       = useState<DocType | null>(null);
+
+  async function openDoc(type: DocType) {
+    setDocLoading(type);
+    try {
+      const res = await fetch("http://localhost:8000/api/v1/docs/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ doc_type: type, repo_name: "SCiCustomer" }),
+      });
+      const text = await res.text();
+      setDocContent(text);
+      setDocType(type);
+    } finally {
+      setDocLoading(null);
+    }
+  }
+
+  function downloadDoc() {
+    if (!docContent || !docType) return;
+    const blob = new Blob([docContent], { type: "text/markdown" });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement("a");
+    a.href = url; a.download = `${docType}.md`; a.click();
+    URL.revokeObjectURL(url);
+  }
 
   return (
     <div className="flex h-screen bg-gray-950 text-gray-100">
@@ -46,10 +66,8 @@ export default function Home() {
             <button
               key={v}
               onClick={() => setView(v)}
-              className={`px-3 py-2 rounded text-left text-sm capitalize transition-colors ${
-                view === v
-                  ? "bg-blue-600 text-white"
-                  : "text-gray-400 hover:bg-gray-800"
+              className={`px-3 py-2 rounded text-left text-sm transition-colors ${
+                view === v ? "bg-blue-600 text-white" : "text-gray-400 hover:bg-gray-800"
               }`}
             >
               {v === "explorer" ? "Feature Explorer" : "AI Chat"}
@@ -59,13 +77,17 @@ export default function Home() {
 
         <div className="mt-auto flex flex-col gap-2">
           <p className="text-xs text-gray-600 uppercase tracking-wider">Generate Docs</p>
-          {(["srs", "readme", "adr"] as const).map((t) => (
+          {(Object.keys(DOC_LABELS) as DocType[]).map((t) => (
             <button
               key={t}
-              onClick={() => downloadDoc(t)}
-              className="flex items-center gap-2 px-3 py-1.5 text-xs text-gray-400 hover:text-gray-200 hover:bg-gray-800 rounded transition-colors"
+              onClick={() => openDoc(t)}
+              disabled={!!docLoading}
+              className="flex items-center gap-2 px-3 py-1.5 text-xs text-gray-400 hover:text-gray-200 hover:bg-gray-800 rounded transition-colors disabled:opacity-50"
             >
-              <FileText size={13} />
+              {docLoading === t
+                ? <Loader2 size={13} className="animate-spin" />
+                : <FileText size={13} />
+              }
               {t.toUpperCase()}
             </button>
           ))}
@@ -83,6 +105,16 @@ export default function Home() {
           <AIChatInterface featureId={selectedFeatureId} />
         )}
       </main>
+
+      {/* Doc drawer */}
+      {docContent && docType && (
+        <DocViewer
+          title={DOC_LABELS[docType]}
+          content={docContent}
+          onClose={() => { setDocContent(null); setDocType(null); }}
+          onDownload={downloadDoc}
+        />
+      )}
     </div>
   );
 }
