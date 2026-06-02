@@ -20,6 +20,18 @@ async def graph_overview(request: Request):
     return {"nodes": counts, "edges": edge_counts}
 
 
+@router.get("/compressed-context")
+async def compressed_context(request: Request, q: str | None = None):
+    """Phase 3 — deterministic graph compression for AI context."""
+    from companion.graph.compressor import compress
+    engine = request.app.state.engine
+    features = await engine.neo4j.query("MATCH (f:Feature) RETURN f LIMIT 200")
+    rels = await engine.neo4j.query(
+        "MATCH (a)-[r]->(b) RETURN a.id AS source_id, b.id AS target_id, type(r) AS kind LIMIT 500"
+    )
+    return compress(features, rels, query=q)
+
+
 @router.get("/relationships")
 async def get_relationships(request: Request):
     """Return all graph relationships as source_id, target_id, kind."""
