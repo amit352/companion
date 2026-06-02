@@ -270,114 +270,132 @@ def _extract_typescript_logic(source: str, file_path: str) -> list[dict[str, Any
     return atoms[:30]
 
 
+def _fn_action(fn_name: str) -> str:
+    base  = fn_name.split(".")[-1].rstrip("?!")
+    words = base.replace("_", " ").strip()
+    for prefix, repl in [
+        ("can ", ""), ("is ", ""), ("has ", ""),
+        ("should ", ""), ("will ", ""),
+        ("destroy ", "destroying "), ("delete ", "deleting "),
+        ("update ", "updating "), ("create ", "creating "),
+        ("upload ", "uploading "), ("add ", "adding "),
+        ("validate ", "validating "), ("check ", "checking "),
+        ("send ", "sending "), ("find ", "finding "),
+        ("build ", "building "), ("get ", "getting "),
+    ]:
+        if words.startswith(prefix):
+            remainder = words[len(prefix):]
+            return remainder if prefix in ("can ", "is ", "has ", "should ", "will ") else repl + remainder
+    return words
+
+
 def _humanize(condition: str, fn_name: str, rule_type: str) -> str:
-    """
-    Convert a raw code condition into a plain-English business rule.
-    Pattern-based — no LLM needed.
-    """
-    c = condition.strip()
-
-    # ── Strip common noise ────────────────────────────────────────────────────
-    c_clean = (c
-        .replace("self.", "").replace("@", "")
-        .replace(".to_s", "").replace(".to_i", "")
-        .replace("!!", ""))
-
-    # ── Error / raise cases ───────────────────────────────────────────────────
-    if rule_type == "error":
-        match = re.search(r'["\']([^"\']+)["\']', c)
-        msg = match.group(1) if match else c_clean[:60]
-        return f"Raises error: {msg}"
-
-    # ── Return cases ──────────────────────────────────────────────────────────
-    if rule_type == "return":
-        if "nil" in c or "null" in c or "None" in c:
-            return "Exits early — returns nothing"
-        if c_clean.lower() in ("true", "false"):
-            val = "succeeds" if "true" in c_clean.lower() else "fails"
-            fn_short = fn_name.split(".")[-1].replace("_", " ").rstrip("?!")
-            return f"{fn_short.title()} {val}"
-        # Variable name as return value — use it as context
-        var_name = c_clean.strip().lstrip("!").replace("_", " ")
-        fn_short = fn_name.split(".")[-1].replace("_", " ").rstrip("?!")
-        return f"Returns whether {fn_short} {var_name}"
-
+    """Full business logic sentence — explains intent and consequence."""
+    c       = condition.strip()
+    c_clean = (c.replace("self.", "").replace("@", "")
+                 .replace(".to_s", "").replace(".to_i", "").replace("!!", ""))
     c_lower = c_clean.lower()
+    action  = _fn_action(fn_name)
 
-    # ── ENV checks (must come before nil check) ───────────────────────────────
-    env_match = re.search(r'ENV\[["\']([\w_]+)["\']\]', c)
-    if env_match:
-        var = env_match.group(1)
-        if ".nil?" in c and "match" in c:
-            # ENV["X"].match("Y").nil? → not in Y environment
-            val_match = re.search(r'match\s*[\(/"\']([^/"\')]+)', c)
-            env_val = val_match.group(1) if val_match else "production"
-            return f"Skips when running in '{env_val}' environment"
-        if "nil" in c or ".nil?" in c:
-            return f"Only runs when {var} environment variable is set"
+    # Error / raise
+    if rule_type == "error":
+        msg_m = re.search(r'["\'\']([^\"\']{4,})["\'\']', c)
+        if msg_m:
+            return f'Fails with "{msg_m.group(1)}" and aborts the operation'
+        return "Raises an error and stops processing"
+
+    # Return
+    if rule_type == "return":
+        if re.search(r"\bnil\b|\bnull\b|\bNone\b", c):
+            return f"Exits early — {action} stops here, nothing returned"
+        bool_m = re.search(r"\b(true|false|True|False)\b", c_clean)
+        if bool_m:
+            outcome = "succeeded" if bool_m.group(1).lower() == "true" else "failed"
+            return f"Reports that {action} has {outcome}"
+        var = c_clean.strip().lstrip("!").replace("_", " ")
+        return f"Returns whether {var} — tells the caller if {action} worked"
+
+    # ENV
+    env_m = re.search(r'ENV\[["\']([\w_]+)["\']\]', c)
+    if env_m:
+        var = env_m.group(1)
         if "match" in c:
-            val_match = re.search(r'match\s*[("\'](.*?)["\')]', c)
-            val = val_match.group(1) if val_match else "…"
-            return f"Only runs in {val} environment"
-        return f"Checks {var} environment variable"
+            val_m = re.search(r'match\s*[\(/"\']([^/"\')]+)', c)
+            env_val = val_m.group(1) if val_m else "production"
+            if ".nil?" in c:
+                return f"Skipped in '{env_val}' — this step only runs outside production"
+            return f"Only {action} when running in '{env_val}' environment"
+        return f"Checks the {var} environment configuration before proceeding"
 
-    # ── params[] checks (must come before nil check) ──────────────────────────
-    param_match = re.findall(r"params\[[:\"']?([\w_]+)[\"']?\]", c)
-    if param_match:
-        params_str = " + ".join(f'"{p}"' for p in param_match[:3])
-        if ("empty" in c_lower or "blank" in c_lower) and "&&" in c:
-            # One empty AND another non-empty → invalid combination
-            return f"Invalid: country code without phone number (partial data)"
-        if "empty" in c_lower or "blank" in c_lower or "nil" in c_lower:
-            return f"Request parameter {params_str} is required"
-        if "&&" in c or "and" in c_lower:
-            return f"Both parameters required: {params_str}"
+    # params[]
+    params = re.findall(r"params\[[:\"']?([\w_]+)[\"']?\]", c)
+    if params:
+        p = [x.replace("_", " ") for x in params[:3]]
+        if any("phone" in x for x in params) and any("country" in x for x in params):
+            return ("Country code cannot be submitted without a phone number — "
+                    "both must be provided together or both left empty")
         if "view_only" in c.lower():
-            return "Restricts results to view-only access"
-        return f"Filters by request parameter {params_str}"
+            return ("When the request is view-only, results are filtered "
+                    "to organisations where the user has read-only access")
+        if re.search(r"empty|blank|nil", c_lower):
+            return f"Aborts if '{p[0]}' is not provided — it is required to continue"
+        if "&&" in c:
+            return f"Both '{p[0]}' and '{p[1] if len(p)>1 else '…'}' must be provided together"
+        return f"Uses '{p[0]}' from the request to determine how to {action}"
 
-    # ── Nil / blank / empty / present checks ─────────────────────────────────
-    if re.search(r"\.nil\?|\.blank\?|\.empty\?|is none|== none|is null|== null", c_lower):
-        subject = re.split(r"\.(nil|blank|empty)", c_lower)[0].strip().replace("!", "")
-        negated = c.strip().startswith("!")
-        verb = "must be present" if negated else "is absent / empty"
-        return f"{_format_subject(subject)} {verb}"
-
-    if re.search(r"\.present\?|\.any\?|\.exists\?", c_lower):
-        subject = re.split(r"\.(present|any|exists)", c_lower)[0].strip()
-        return f"{_format_subject(subject)} must exist"
-
-    # ── Equality / inequality ─────────────────────────────────────────────────
-    eq_match = re.search(r'(.+?)\s*[!=]=+\s*["\']?([^"\']+?)["\']?\s*$', c_clean)
-    if eq_match:
-        lhs   = _format_subject(eq_match.group(1).strip())
-        rhs   = eq_match.group(2).strip()
-        is_ne = "!=" in c or "!==" in c
-        verb  = f"must not be '{rhs}'" if is_ne else f"must be '{rhs}'"
-        return f"{lhs} {verb}"
-
-    # ── match / regex ─────────────────────────────────────────────────────────
-    match_m = re.search(r'match\s*[/\("\'](.*?)[/"\')]', c)
-    if match_m:
-        pattern = match_m.group(1)[:40]
-        return f"Validates pattern: {pattern}"
-
-    # ── Comparisons ───────────────────────────────────────────────────────────
-    cmp_match = re.search(r'(.+?)\s*([<>]=?)\s*(.+)', c_clean)
-    if cmp_match:
-        lhs, op, rhs = cmp_match.groups()
-        ops = {"<": "less than", ">": "greater than", "<=": "at most", ">=": "at least"}
-        return f"{_format_subject(lhs.strip())} must be {ops.get(op, op)} {rhs.strip()}"
-
-    # ── Boolean flags / method calls ─────────────────────────────────────────
-    if re.match(r'^[a-z_?!]+$', c_clean) or re.match(r'^[a-z_]+\.[a-z_?!]+$', c_clean):
+    # nil / blank
+    if re.search(r"\.nil\?|\.blank\?", c_lower):
+        subj_raw = re.split(r"\.(nil|blank)", c_lower)[0].strip().lstrip("!")
         neg = c.strip().startswith("!")
-        clean = c_clean.lstrip("!")
-        return f"Guard: {'not ' if neg else ''}{_format_subject(clean)} must be true"
+        subj = _format_subject(subj_raw)
+        if neg:
+            return f"Skips when {subj} has no value — nothing to {action}"
+        return f"{subj} must have a value before {action} can run"
 
-    # ── Fallback: clean up the raw expression ─────────────────────────────────
-    short = c_clean[:80].replace("  ", " ")
-    return f"When: {short}"
+    # empty
+    if ".empty?" in c_lower:
+        subj_raw = c_lower.split(".empty")[0].strip().lstrip("!")
+        neg = c.strip().startswith("!")
+        subj = _format_subject(subj_raw)
+        return (f"{subj} must not be empty — at least one entry is needed to {action}"
+                if neg else f"Skips {action} when {subj} is empty")
+
+    # present / any / exists
+    if re.search(r"\.present\?|\.any\?|\.exists\?", c_lower):
+        subj_raw = re.split(r"\.(present|any|exists)", c_lower)[0].strip()
+        return f"{_format_subject(subj_raw)} must already exist before {action} can run"
+
+    # Equality / inequality
+    eq_m = re.search(r"(.+?)\s*(!?=+)\s*[\"']*([^\"']+?)[\"']*\s*$", c_clean)
+    if eq_m:
+        lhs, op, rhs = eq_m.groups()
+        subj = _format_subject(lhs.strip())
+        is_ne = "!" in op
+        if is_ne:
+            return f"{subj} must not be '{rhs}' — '{rhs}' records are excluded from {action}"
+        return f"Only proceeds when {subj} is set to '{rhs}'"
+
+    # match / regex
+    match_m = re.search(r"match\s*[/(\"'](.*?)[/\"\'\)]", c)
+    if match_m:
+        pattern = match_m.group(1)[:50]
+        return f"Validates that the value matches '{pattern}' — rejects if it doesn't"
+
+    # Comparisons
+    cmp_m = re.search(r"(.+?)\s*([<>]=?)\s*(.+)", c_clean)
+    if cmp_m:
+        lhs, op, rhs = cmp_m.groups()
+        words = {"<": "below", ">": "above", "<=": "at most", ">=": "at least"}
+        return f"{_format_subject(lhs.strip())} must be {words.get(op, op)} {rhs.strip()} to {action}"
+
+    # Simple boolean
+    if re.match(r"^!?[a-z_?!]+$", c_clean):
+        neg  = c.strip().startswith("!")
+        flag = c_clean.lstrip("!").replace("_", " ").rstrip("?!")
+        return (f"Skips when '{flag}' is off" if neg else
+                f"Proceeds only when '{flag}' is active")
+
+    return f"Condition met: {c_clean[:90]}"
 
 
 def _format_subject(raw: str) -> str:
