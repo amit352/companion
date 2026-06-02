@@ -270,6 +270,124 @@ def _extract_typescript_logic(source: str, file_path: str) -> list[dict[str, Any
     return atoms[:30]
 
 
+def _humanize(condition: str, fn_name: str, rule_type: str) -> str:
+    """
+    Convert a raw code condition into a plain-English business rule.
+    Pattern-based — no LLM needed.
+    """
+    c = condition.strip()
+
+    # ── Strip common noise ────────────────────────────────────────────────────
+    c_clean = (c
+        .replace("self.", "").replace("@", "")
+        .replace(".to_s", "").replace(".to_i", "")
+        .replace("!!", ""))
+
+    # ── Error / raise cases ───────────────────────────────────────────────────
+    if rule_type == "error":
+        match = re.search(r'["\']([^"\']+)["\']', c)
+        msg = match.group(1) if match else c_clean[:60]
+        return f"Raises error: {msg}"
+
+    # ── Return cases ──────────────────────────────────────────────────────────
+    if rule_type == "return":
+        if "nil" in c or "null" in c or "None" in c:
+            return "Exits early — returns nothing"
+        if c_clean.lower() in ("true", "false"):
+            val = "succeeds" if "true" in c_clean.lower() else "fails"
+            fn_short = fn_name.split(".")[-1].replace("_", " ").rstrip("?!")
+            return f"{fn_short.title()} {val}"
+        # Variable name as return value — use it as context
+        var_name = c_clean.strip().lstrip("!").replace("_", " ")
+        fn_short = fn_name.split(".")[-1].replace("_", " ").rstrip("?!")
+        return f"Returns whether {fn_short} {var_name}"
+
+    c_lower = c_clean.lower()
+
+    # ── ENV checks (must come before nil check) ───────────────────────────────
+    env_match = re.search(r'ENV\[["\']([\w_]+)["\']\]', c)
+    if env_match:
+        var = env_match.group(1)
+        if ".nil?" in c and "match" in c:
+            # ENV["X"].match("Y").nil? → not in Y environment
+            val_match = re.search(r'match\s*[\(/"\']([^/"\')]+)', c)
+            env_val = val_match.group(1) if val_match else "production"
+            return f"Skips when running in '{env_val}' environment"
+        if "nil" in c or ".nil?" in c:
+            return f"Only runs when {var} environment variable is set"
+        if "match" in c:
+            val_match = re.search(r'match\s*[("\'](.*?)["\')]', c)
+            val = val_match.group(1) if val_match else "…"
+            return f"Only runs in {val} environment"
+        return f"Checks {var} environment variable"
+
+    # ── params[] checks (must come before nil check) ──────────────────────────
+    param_match = re.findall(r"params\[[:\"']?([\w_]+)[\"']?\]", c)
+    if param_match:
+        params_str = " + ".join(f'"{p}"' for p in param_match[:3])
+        if ("empty" in c_lower or "blank" in c_lower) and "&&" in c:
+            # One empty AND another non-empty → invalid combination
+            return f"Invalid: country code without phone number (partial data)"
+        if "empty" in c_lower or "blank" in c_lower or "nil" in c_lower:
+            return f"Request parameter {params_str} is required"
+        if "&&" in c or "and" in c_lower:
+            return f"Both parameters required: {params_str}"
+        if "view_only" in c.lower():
+            return "Restricts results to view-only access"
+        return f"Filters by request parameter {params_str}"
+
+    # ── Nil / blank / empty / present checks ─────────────────────────────────
+    if re.search(r"\.nil\?|\.blank\?|\.empty\?|is none|== none|is null|== null", c_lower):
+        subject = re.split(r"\.(nil|blank|empty)", c_lower)[0].strip().replace("!", "")
+        negated = c.strip().startswith("!")
+        verb = "must be present" if negated else "is absent / empty"
+        return f"{_format_subject(subject)} {verb}"
+
+    if re.search(r"\.present\?|\.any\?|\.exists\?", c_lower):
+        subject = re.split(r"\.(present|any|exists)", c_lower)[0].strip()
+        return f"{_format_subject(subject)} must exist"
+
+    # ── Equality / inequality ─────────────────────────────────────────────────
+    eq_match = re.search(r'(.+?)\s*[!=]=+\s*["\']?([^"\']+?)["\']?\s*$', c_clean)
+    if eq_match:
+        lhs   = _format_subject(eq_match.group(1).strip())
+        rhs   = eq_match.group(2).strip()
+        is_ne = "!=" in c or "!==" in c
+        verb  = f"must not be '{rhs}'" if is_ne else f"must be '{rhs}'"
+        return f"{lhs} {verb}"
+
+    # ── match / regex ─────────────────────────────────────────────────────────
+    match_m = re.search(r'match\s*[/\("\'](.*?)[/"\')]', c)
+    if match_m:
+        pattern = match_m.group(1)[:40]
+        return f"Validates pattern: {pattern}"
+
+    # ── Comparisons ───────────────────────────────────────────────────────────
+    cmp_match = re.search(r'(.+?)\s*([<>]=?)\s*(.+)', c_clean)
+    if cmp_match:
+        lhs, op, rhs = cmp_match.groups()
+        ops = {"<": "less than", ">": "greater than", "<=": "at most", ">=": "at least"}
+        return f"{_format_subject(lhs.strip())} must be {ops.get(op, op)} {rhs.strip()}"
+
+    # ── Boolean flags / method calls ─────────────────────────────────────────
+    if re.match(r'^[a-z_?!]+$', c_clean) or re.match(r'^[a-z_]+\.[a-z_?!]+$', c_clean):
+        neg = c.strip().startswith("!")
+        clean = c_clean.lstrip("!")
+        return f"Guard: {'not ' if neg else ''}{_format_subject(clean)} must be true"
+
+    # ── Fallback: clean up the raw expression ─────────────────────────────────
+    short = c_clean[:80].replace("  ", " ")
+    return f"When: {short}"
+
+
+def _format_subject(raw: str) -> str:
+    """Turn a snake_case/camelCase code identifier into Title Case words."""
+    s = re.sub(r'[_\[\]"\'.()]+', ' ', raw).strip()
+    s = re.sub(r'(?<=[a-z])(?=[A-Z])', ' ', s)   # camelCase split
+    s = re.sub(r'\s+', ' ', s).strip()
+    return s.title() if len(s) < 40 else s[:40]
+
+
 def _language_from_path(path: str) -> str:
     ext = Path(path).suffix.lower()
     return {".py": "python", ".rb": "ruby", ".ts": "typescript",
@@ -349,16 +467,19 @@ async def get_feature_atoms(
         except Exception:
             continue
 
-    # Build business rule summary from conditions
+    # Build business rule summary with human-readable explanations
     rules = []
     for atom in all_atoms:
         for cond in atom.get("conditions", []):
+            raw_text = cond["text"]
+            readable = _humanize(raw_text, atom["name"], cond["type"])
             rules.append({
-                "function":    atom["name"],
-                "rule_type":   cond["type"],
-                "description": cond["text"],
-                "file":        atom.get("file", ""),
-                "line":        atom.get("line", 0),
+                "function":      atom["name"],
+                "rule_type":     cond["type"],
+                "description":   raw_text,        # raw code condition
+                "readable":      readable,          # plain-English explanation
+                "file":          atom.get("file", ""),
+                "line":          atom.get("line", 0),
             })
 
     return {

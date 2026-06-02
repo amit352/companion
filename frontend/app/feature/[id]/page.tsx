@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
-import { ArrowLeft, Code2, GitBranch, Shield, AlertTriangle, CornerDownRight } from "lucide-react";
+import { ArrowLeft, Code2, GitBranch, Shield, AlertTriangle, CornerDownRight, ChevronDown } from "lucide-react";
 import { HierarchyPanel } from "@/components/HierarchyPanel";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
@@ -25,6 +25,7 @@ export default function FeatureDetailPage() {
   const router   = useRouter();
   const [full, setFull]           = useState<any>(null);
   const [atoms, setAtoms]         = useState<any>(null);
+  const [rulesOpen, setRulesOpen] = useState(true);
   const [code, setCode]           = useState<Record<string, any>>({});
   const [openFile, setOpenFile]   = useState<string | null>(null);
   const [highlightLine, setHighlightLine] = useState<number | null>(null);
@@ -161,19 +162,29 @@ export default function FeatureDetailPage() {
         {/* RIGHT: Code + Business Logic */}
         <div className="col-span-2 space-y-4">
 
-          {/* Business rules summary */}
+          {/* Business rules — collapsible */}
           {atoms?.business_rules?.length > 0 && (
-            <div className="bg-gray-900 rounded-xl p-4 border border-gray-800">
-              <div className="flex items-center gap-2 mb-3">
-                <Shield size={14} className="text-blue-400" />
-                <h2 className="text-sm font-semibold text-gray-200">
-                  Business Rules ({atoms.rule_count})
+            <div className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
+              {/* Header — always visible, click to collapse */}
+              <button
+                onClick={() => setRulesOpen(!rulesOpen)}
+                className="flex items-center gap-2 w-full px-4 py-3 hover:bg-gray-800/50 transition-colors text-left"
+              >
+                <Shield size={14} className="text-blue-400 flex-shrink-0" />
+                <h2 className="text-sm font-semibold text-gray-200 flex-1">
+                  Business Rules
+                  <span className="ml-2 text-xs font-normal text-gray-500">
+                    {atoms.rule_count} rules · {atoms.function_count} functions
+                  </span>
                 </h2>
-                <span className="text-xs text-gray-600 ml-auto">
-                  {atoms.function_count} functions analyzed
-                </span>
-              </div>
-              <div className="space-y-1.5">
+                <ChevronDown
+                  size={14}
+                  className={`text-gray-500 transition-transform ${rulesOpen ? "rotate-180" : ""}`}
+                />
+              </button>
+
+              {rulesOpen && (
+              <div className="border-t border-gray-800 divide-y divide-gray-800/60">
                 {atoms.business_rules.slice(0, 20).map((rule: any, i: number) => {
                   const Icon = RULE_ICONS[rule.rule_type] ?? Shield;
                   const color = RULE_COLORS[rule.rule_type] ?? "text-gray-400";
@@ -182,27 +193,36 @@ export default function FeatureDetailPage() {
                     <button
                       key={i}
                       onClick={() => rule.file && loadFile(rule.file, rule.line)}
-                      className={`flex items-start gap-2 py-1.5 px-2 rounded w-full text-left transition-colors ${
-                        isHighlighted
-                          ? "bg-yellow-900/30 border border-yellow-700/50"
-                          : "hover:bg-gray-800"
+                      className={`flex items-start gap-3 px-4 py-3 w-full text-left transition-colors ${
+                        isHighlighted ? "bg-yellow-900/20" : "hover:bg-gray-800/60"
                       }`}
-                      title={rule.file ? `Jump to line ${rule.line} in ${rule.file}` : ""}
+                      title={rule.file ? `Jump to line ${rule.line}` : ""}
                     >
-                      <Icon size={12} className={`${color} mt-0.5 flex-shrink-0`} />
-                      <div className="min-w-0 flex-1">
-                        <span className="text-xs text-gray-500 mr-2">{rule.function}</span>
-                        <code className={`text-xs ${color} font-mono break-all`}>
-                          {rule.description}
-                        </code>
+                      <Icon size={13} className={`${color} mt-0.5 flex-shrink-0`} />
+
+                      <div className="min-w-0 flex-1 space-y-0.5">
+                        {/* Human-readable explanation — primary */}
+                        <p className="text-sm text-gray-200 leading-snug">
+                          {rule.readable ?? rule.description}
+                        </p>
+                        {/* Raw code — secondary, monospace */}
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-gray-600 font-mono truncate flex-1">
+                            {rule.function} — <code className={`${color}`}>{rule.description}</code>
+                          </span>
+                        </div>
                       </div>
+
                       {rule.line > 0 && (
-                        <span className="text-xs text-gray-700 flex-shrink-0">L{rule.line}</span>
+                        <span className="text-xs text-gray-600 flex-shrink-0 font-mono mt-0.5">
+                          L{rule.line}
+                        </span>
                       )}
                     </button>
                   );
                 })}
               </div>
+              )}  {/* rulesOpen */}
             </div>
           )}
 
